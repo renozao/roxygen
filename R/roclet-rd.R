@@ -422,8 +422,14 @@ process.usage <- function(partitum) {
 # by details (separated by a blank line).
 process_description <- function(partitum, base_path) {
   intro <- partitum$introduction
-  if (is.null(intro)) return()
-  paragraphs <- str_trim(strsplit(intro, '\n\n', fixed=TRUE)[[1]])
+  
+  paragraphs <- 
+  if (is.null(intro) ){
+	# still process if there is an introduction or any relevant tag
+	if( !any(partitum_has_tag(partitum, c('details', 'title', 'description'))) )
+		return()
+  }else
+  	str_trim(strsplit(intro, '\n\n', fixed=TRUE)[[1]])
 
   # 1st paragraph = title (unless has @title)
   if (!is.null(partitum$title)) {
