@@ -1,5 +1,10 @@
 # Parse a preref
 parse.preref <- function(lines) {
+
+  # extract the srcref
+  srcrefs <- attr(lines, 'srcref')
+  srcrefs$lloc[1] <-   srcrefs$lloc[1] + 1 
+  
   delimited.lines <- lines[str_detect(lines, LINE.DELIMITER)]
   trimmed.lines <- str_trim(str_replace(delimited.lines, LINE.DELIMITER, ""))
 
@@ -15,8 +20,10 @@ parse.preref <- function(lines) {
   elements <- str_replace_all(elements, fixed("@@"), "@")
 
   parsed.introduction <- parse.introduction(elements[[1]])
-  parsed.elements <- unlist(lapply(elements[-1], parse.element), 
-    recursive = FALSE)
+  
+  # try to parse: stops providing srcref in case of an error 
+  err <- tryCatch(parsed.elements <- unlist(lapply(elements[-1], parse.element), 
+    recursive = FALSE), error = function(e) roxygen_stop(e$message, srcref=srcrefs))
   
   c(parsed.introduction, parsed.elements)
 } 
@@ -40,7 +47,11 @@ prerefs <- function(srcfile, srcrefs) {
   comments_end <- src_start
   
   src <- readLines(srcfile$filename, warn = FALSE)
-  Map(function(start, end) src[start:end], comments_start, comments_end)
+  Map(function(start, end){ 
+		dox <- src[start:end]		
+		attr(dox, 'srcref') <- list(filename = srcfile$filename, lloc = c(start, 0 , end, 0)) 
+		dox
+	}, comments_start, comments_end)
 }
 
 # Parse a raw string containing key and expressions.
@@ -106,7 +117,7 @@ parse.unknown <- function(key, rest) {
 #' @export
 parse.value <- function(key, rest) {
   if (is.null.string(rest))
-    stop(key, 'requires a value', call. = FALSE)
+    stop(key, ' requires a value', call. = FALSE)
   else
     parse.default(key, rest)
 }
@@ -126,7 +137,7 @@ parse.name.description <- function(key, rest) {
   rest <- str_trim(pieces[, 2])
 
   if (is.null.string(name))
-    stop(key, 'requires a name and description', call. = FALSE)
+    stop(key, ' requires a name and description', call. = FALSE)
   else
     as.list(structure(list(list(name=name,
                                 description=rest)),

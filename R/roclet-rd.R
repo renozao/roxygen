@@ -321,7 +321,8 @@ roclet_rd_one <- function(partitum, base_path) {
   if (is.null(name) && length(partitum$assignee) == 1) {
      name <- partitum$assignee
   }
-  if (is.null(name)) stop("Missing name")
+  if( is.null(name) )
+	roxygen_stop("Missing name", srcref = partitum$srcref)	
 
   # Work out file name and initialise Rd object
   filename <- str_c(partitum$merge %||% partitum$rdname %||% name, ".Rd")

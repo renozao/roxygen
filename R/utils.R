@@ -31,3 +31,17 @@ usage <- function(args) {
 is.null.string <- function(string) {
   str_length(str_trim(string)) == 0
 }
+
+
+# Roxygen Emergency Stop
+#
+# Provides the problematic filename/block lines.
+# @param ... error messages to pass to \code{\link{stop}}
+# @param srcref srcref data used to provide debugging information
+# @return throws an error
+roxygen_stop <- function(..., srcref) {
+	stop("Roxygen - ", ...
+		, if( !missing(srcref) ) paste(" [file: ",  basename(srcref$filename)
+		,  " / lines ", srcref$lloc[1], "-", srcref$lloc[3], "]", sep='')
+		, call.=FALSE)
+}
