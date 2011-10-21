@@ -181,10 +181,20 @@ process_tag <- function(partitum, tag, f) {
   
   unlist(lapply(matches, f, tag = tag, all = partitum), use.names = FALSE)
 }
-  
-words <- function(x, quote=TRUE) {
+
+
+# escape % and \ if requested (e.g. in aliases, usage)
+escape_chr <- function(x){	
+	gsub("([%\\])", "\\\\\\1", x)
+}
+
+words <- function(x, quote=TRUE, escape=FALSE) {
   w <- str_split(str_trim(x), "\\s+")[[1]]
-  if( quote ) quote_if_needed(w) else w
+  
+  # escape special characters if requested (e.g. in aliases, usage)
+  if( escape )
+  	w <- escape_chr(w)
+  if( quote ) quote_if_needed(w) else w  
 }
 is.syntactic <- function(x) make.names(x) == x
 has.quotes <- function(x) str_detect(x, "'|\"")
