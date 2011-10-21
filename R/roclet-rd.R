@@ -326,14 +326,14 @@ roclet_rd_one <- function(partitum, base_path) {
   # Work out file name and initialise Rd object
   filename <- str_c(partitum$merge %||% partitum$rdname %||% name, ".Rd")
   
-  add_tag(rd, new_tag("name", name))
-  add_tag(rd, new_tag("alias", name))
+  add_tag(rd, new_tag("name", words(param, quote=FALSE)))
+  add_tag(rd, new_tag("alias", words(param, quote=FALSE)))
   add_tag(rd, new_tag("formals", names(partitum$formals)))
 
   add_tag(rd, process_description(partitum, base_path))
 
   add_tag(rd, process_had_tag(partitum, 'aliases', function(tag, param) {
-      new_tag('alias', words(param))
+      new_tag('alias', words(param, quote=FALSE))
     }))
   add_tag(rd, process.usage(partitum))
   add_tag(rd, process.arguments(partitum))
