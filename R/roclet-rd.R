@@ -62,6 +62,14 @@ register.srcref.parser('setMethod', function(call, env) {
     signature = as.character(call$signature))
 })
 
+register.srcref.parser('setReplaceMethod', function(call, env) {
+	pname <- as.character(call$f)
+	name <- paste(pname, '<-', sep='')
+	list(
+			S4method = name,
+			signature = as.character(call$signature))
+})
+
 #' Roclet: make Rd files.
 #'
 #' This roclet is the workhorse of \pkg{roxygen}, producing the Rd files that
