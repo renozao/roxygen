@@ -50,6 +50,8 @@ register.srcref.parsers(function(call, env) {
   # set required aliases
   if( length(res$assignee) == 1 ){
   	res <- auto_utag(res, 'aliases', res$assignee)	
+	# set default Rd name
+	res$auto_rdname <- res$assignee
   }
 	
   res
@@ -61,6 +63,8 @@ register.srcref.parser('setClass', function(call, env) {
   res <- list(S4class = name)
   
   cname <- paste(name, 'class', sep='-')  
+  # set default Rd name
+  res$auto_rdname <- cname
   # set required aliases
   res <- auto_utag(res, 'aliases', c(name, cname))  
   
@@ -74,6 +78,8 @@ register.srcref.parser('setGeneric', function(call, env) {
   mname <- paste(name, 'methods', sep='-')
   # set required docType
 	res <- auto_xtag(res, 'docType', 'methods')  
+  # set default Rd name
+	res$auto_rdname <- sub('<-', '', mname, fixed=TRUE)
   # set required aliases
 	res <- auto_utag(res, 'aliases', c(name, mname))
   # set required keyword 'methods'
@@ -90,6 +96,9 @@ register.srcref.parser('setMethod', function(call, env) {
     S4method = name,
 	signature = sig)
 
+	mname <- paste(name, 'methods', sep='-')
+	# set default Rd name
+	res$auto_rdname <- sub('<-', '', mname, fixed=TRUE)
 	# set required aliases
 	res <- auto_utag(res, 'aliases', paste(paste(c(name, sig), collapse=','), 'method', sep='-'))	
 	
@@ -105,6 +114,10 @@ register.srcref.parser('setReplaceMethod', function(call, env) {
 			S4method = name,
 			signature = sig)
 	
+	# use the same Rdname as the non replacement method
+	mname <- paste(pname, 'methods', sep='-')
+	# set default Rd name
+	res$auto_rdname <- mname
 	# set required aliases
 	res <- auto_utag(res, 'aliases', paste(paste(c(name, sig), collapse=','), 'method', sep='-'))
 	
@@ -263,6 +276,9 @@ roc_process.had <- function(roclet, partita, base_path) {
   templates <- dir(file.path(base_path, "max-roxygen"), full = TRUE)
   template_hash <- digest(lapply(templates, readLines))
   
+  # reset the chained list for resolving rdname
+  rdname_cache$reset()
+  
   topics <- list()
   for (partitum in partita) {
     key <- c(template_hash, digest(partitum))
@@ -385,6 +401,22 @@ process_autotags <- function(partitum){
 	partitum
 }
 
+process_rdname <- function(name, partitum){
+		
+	# primary target rdname	
+	key <- partitum$auto_rdname %||% name
+	target <- partitum$merge %||% partitum$rdname %||% key 
+	if( is.null(key) ){
+		print(partitum)
+		stop("cannot resolve rdname: key is null")
+	}
+	
+	# set/lookup chain cache for the end target rdname
+	target <- rdname_cache$chain_compute(key, target)	
+	
+	str_c(target, ".Rd")
+}
+
 utag <- function(x, y, tag){
 	c(x, setNames(y[[tag]], rep(tag, length(y[[tag]]))))	
 }
@@ -426,10 +458,10 @@ roclet_rd_one <- function(partitum, base_path) {
 
   # add auto tags to the partitum
   partitum <- process_autotags(partitum)
-
-  # Work out file name and initialise Rd object
-  filename <- str_c(partitum$merge %||% partitum$rdname %||% name, ".Rd")
   
+  # Work out file name and initialise Rd object
+  filename <- process_rdname(name, partitum)
+
   add_tag(rd, new_tag("name", words(name, quote=FALSE, escape = TRUE)))
   #add_tag(rd, new_tag("alias", words(name, quote=FALSE, escape = TRUE)))
   add_tag(rd, new_tag("formals", names(partitum$formals)))
