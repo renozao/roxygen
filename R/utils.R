@@ -16,8 +16,9 @@ usage <- function(args) {
     if (is.missing.arg(arg)) return("")
     text <- deparse(arg, backtick = TRUE, width.cutoff = 500L)
     text <- str_replace_all(text, fixed("%"), "\\%")
+    text <- str_replace_all(text, fixed(" "), "\uA0")
     
-    paste(" = ", paste(text, collapse = "\n"), sep = "")
+    paste("\uA0=\uA0", paste(text, collapse = "\n"), sep = "")
   }
 
   arg_values <- vapply(args, arg_to_text, character(1))
@@ -33,15 +34,59 @@ is.null.string <- function(string) {
 }
 
 
-# Roxygen Emergency Stop
-#
-# Provides the problematic filename/block lines.
-# @param ... error messages to pass to \code{\link{stop}}
-# @param srcref srcref data used to provide debugging information
-# @return throws an error
-roxygen_stop <- function(..., srcref) {
-	stop("Roxygen - ", ...
-		, if( !missing(srcref) ) paste(" [file: ",  basename(srcref$filename)
-		,  " / lines ", srcref$lloc[1], "-", srcref$lloc[3], "]", sep='')
-		, call.=FALSE)
+subs <- matrix(ncol = 2, byrow = T, c(
+  '[]', 'sub',
+  '<-', 'set',
+  '!', 'not',
+  '"', 'quote',
+  '#', 'hash',
+  '$', 'cash',
+  '%', 'grapes',
+  '&', 'and',
+  '|', 'or',
+  "'", 'single-quote',
+  '(', 'open-paren',
+  ')', 'close-paren',
+  '*', 'star',
+  '+', 'plus',
+  ',', 'comma',
+  '/', 'slash',
+  ':', 'colon',
+  ';', 'semi-colon',
+  '<', 'less-than',
+  '=', 'equals',
+  '>', 'greater-than',
+  '?', 'p',
+  '@', 'at',
+  '[', 'open-brace',
+  '\\', 'backslash',
+  ']', 'close-brace',
+  '^', 'hat',
+  '`', 'tick',
+  '{', 'open-curly',
+  '}', 'close',
+  '~', 'twiddle'
+))
+subs[, 2] <- str_c("-", subs[, 2])
+
+nice_name <- function(x) {
+  for(i in seq_len(nrow(subs))) {
+    x <- str_replace_all(x, fixed(subs[i, 1]), subs[i, 2])
+  }
+  x <- str_replace(x, "-+", "-")
+  x
+}
+
+
+roxygen_stop <- function(..., srcref = NULL) {
+  stop(..., srcref_location(srcref), call. = FALSE)
+}
+
+roxygen_warning <- function(..., srcref = NULL) {
+  warning(..., srcref_location(srcref), call. = FALSE)
+}
+
+srcref_location <- function(srcref = NULL) {
+  if (is.null(srcref)) return()
+  str_c(" in block ", basename(srcref$filename), ":", srcref$lloc[1])
 }

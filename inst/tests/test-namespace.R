@@ -55,12 +55,31 @@ test_that("other namespace tags produce correct output", {
     #' @exportPattern test
     #' @S3method test test
     #' @import test
-    #' @importFrom test test
-    #' @importClassesFrom test test
-    #' @importMethodsFrom test test
+    #' @importFrom test test1 test2 
+    #' @importClassesFrom test test1 test2
+    #' @importMethodsFrom test test1 test2
     NULL")
 
-  expect_equal(sort(out), sort(c("exportPattern(test)", "S3method(test,test)",
-    "import(test)", "importFrom(test,test)", "importClassesFrom(test,test)",
-    "importMethodsFrom(test,test)")))
+  expect_equal(sort(out), sort(c(
+    "exportPattern(test)", 
+    "S3method(test,test)",
+    "import(test)", 
+    "importFrom(test,test1)", 
+    "importFrom(test,test2)",
+    "importClassesFrom(test,test1)", 
+    "importClassesFrom(test,test2)", 
+    "importMethodsFrom(test,test1)",
+    "importMethodsFrom(test,test2)"
+  )))
+})
+
+test_that("useDynLib imports only selected functions", {
+  out <- roc_proc_text(roc, "
+    #' @useDynLib test
+    #' @useDynLib test a
+    #' @useDynLib test a b
+    NULL")
+  
+    expect_equal(sort(out), sort(
+      c("useDynLib(test)", "useDynLib(test,a)", "useDynLib(test,b)")))
 })

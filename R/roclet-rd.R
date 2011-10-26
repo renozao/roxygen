@@ -22,6 +22,7 @@ register.preref.parsers(parse.value,
                         'inheritParams',
                         'format',
                         'source', 
+                        'encoding',
                         'description',
                         'details')
 
@@ -38,23 +39,31 @@ register.preref.parsers(parse.default,
 
 
 register.srcref.parsers(function(call, env) {
-  assignee <- call[[2]]
-  value <- eval(assignee, env)
+  assignee <- as.character(call[[2]])
   
-  res <- if (!is.function(value)) {
-    list(assignee = as.character(assignee))
+  # If it doesn't exist (any more), don't document it.
+  if (!exists(assignee, env)) return()
+  value <- get(assignee, env)
+  
+  out <- list(assignee = as.character(assignee))
+  out$fun <- is.function(value)
+  
+  if (out$fun) {
+    out$formals <- formals(value)
   } else {
-    list(assignee = as.character(assignee), formals = formals(value))
+    if (is.null(out$docType)) out$docType <- "data"
+    out$str <- str_c(capture.output(str(value, max.level = 1)), 
+      collapse = "\n")
   }
 
   # set required aliases
-  if( length(res$assignee) == 1 ){
-  	res <- auto_utag(res, 'aliases', res$assignee)	
+  if( length(out$assignee) == 1 ){
+  	out <- auto_utag(out, 'aliases', out$assignee)	
 	# set default Rd name
-	res$auto_rdname <- res$assignee
+	out$auto_rdname <- out$assignee
   }
 	
-  res
+  out
 }, '<-', '=')
 
 
@@ -251,7 +260,8 @@ register.srcref.parser('setReplaceMethod', function(call, env) {
 #'    documenting datasets, and other non-function elements.}
 #'
 #'  \item{\code{@@docType type}}{Type of object being documented. Useful 
-#'    values are \code{data} and \code{package}. }
+#'    values are \code{data} and \code{package}. Package doc type will
+#'    automatically add a \code{package-} alias if needed.}
 #' 
 #'  \item{\code{@@format description}}{A textual description of the format
 #'    of the object.}
@@ -440,7 +450,7 @@ roclet_rd_one <- function(partitum, base_path) {
   partitum <- process_templates(partitum, base_path)
   
   has_rd <- any(names(partitum) %in% c("description", "param", "return",
-    "title", "example", "examples", "docType", "name", "rdname", "usage",
+    "title", "example", "examples", "name", "rdname", "usage",
     "details", "introduction", "autoRd"))
   if (!has_rd) return()
   
@@ -462,18 +472,19 @@ roclet_rd_one <- function(partitum, base_path) {
   # Work out file name and initialise Rd object
   filename <- process_rdname(name, partitum)
 
-  add_tag(rd, new_tag("name", words(name, quote=FALSE, escape = TRUE)))
-  #add_tag(rd, new_tag("alias", words(name, quote=FALSE, escape = TRUE)))
+  add_tag(rd, new_tag("encoding", partitum$encoding))
+  add_tag(rd, new_tag("name", words(name, quote=FALSE)))
+  add_tag(rd, new_tag("alias", words(name, quote=FALSE)))
   add_tag(rd, new_tag("formals", names(partitum$formals)))
 
   add_tag(rd, process_description(partitum, base_path))
 
   add_tag(rd, process_had_tag(partitum, 'aliases', function(tag, param) {
-      new_tag('alias', words(param, quote=FALSE, escape = TRUE))
+      new_tag('alias', words(param, quote=FALSE))
     }))
   add_tag(rd, process.usage(partitum))
   add_tag(rd, process.arguments(partitum))
-  add_tag(rd, process_had_tag(partitum, 'docType'))
+  add_tag(rd, process.docType(partitum))
   add_tag(rd, process_had_tag(partitum, 'note'))
   add_tag(rd, process_had_tag(partitum, 'family'))
   add_tag(rd, process_had_tag(partitum, 'inheritParams'))
@@ -529,27 +540,30 @@ roc_output.had <- function(roclet, results, base_path) {
 }
 
 
-
-
 # Prefer explicit \code{@@usage} to a \code{@@formals} list.
 process.usage <- function(partitum) {
+  if (is.null(partitum$fun) || !partitum$fun) {
+    return(new_tag("usage", NULL))
+  }
+  
+  print(partitum$usage)
   if (!is.null(partitum$usage)) {
     return(new_tag("usage", partitum$usage))
   }
-  
-  formals <- partitum$formals
-  if (length(formals) == 0) return()
-  
-  args <- usage(formals)
-  
+    
   fun_name <- if (!is.null(partitum$method)) {
     rd_tag('method', partitum$method[[1]], partitum$method[[2]])
   } else {
     partitum$assignee
   }
-
-  usage <- str_c(escape_chr(fun_name), "(", args, ")")
-  new_tag("usage", usage)
+  args <- usage(partitum$formals)
+  
+  if (str_detect(fun_name, fixed("<-"))) {
+    fun_name <- str_replace(fun_name, fixed("<-"), "")
+    new_tag("usage", str_c(fun_name, "(", args, ") <- value"))
+  } else {
+    new_tag("usage", str_c(fun_name, "(", args, ")"))
+  }
 }
 
 # Process title, description and details. 
@@ -627,6 +641,7 @@ process.examples <- function(partitum, base_path) {
   if (length(paths) > 0) {
     paths <- file.path(base_path, str_trim(paths))
     examples <- unlist(lapply(paths, readLines))
+    examples <- gsub("([%\\])", "\\\\\\1", examples)                        
     
     out <- c(out, new_tag("examples", examples))
   }
@@ -636,6 +651,30 @@ process.section <- function(key, value) {
   pieces <- str_split_fixed(value, ":", n = 2)[1, ]
   
   new_tag("section", list(list(name = pieces[1], content = pieces[2])))
+}
+
+process.docType <- function(partitum) {
+  doctype <- partitum$docType
+  
+  if (is.null(doctype)) return()
+  tags <- list(new_tag("docType", doctype))
+  
+  if (doctype == "package") {
+    name <- partitum$name
+    if (!str_detect(name, "-package")) {
+      tags <- c(tags, new_tag("alias", str_c(name, "-package")))
+    }
+  } else if (doctype == "data") {
+    if (is.null(partitum$format)) {
+      tags <- c(tags, new_tag("format", partitum$str))
+    }
+    if (is.null(partitum$usage)) {
+      tags <- c(tags, new_tag("usage", partitum$assignee))
+    }
+    tags <- c(tags, new_tag("keyword", "dataset"))
+  }
+  
+  tags
 }
 
 process_had_tag <- function(partitum, tag, f = new_tag) {

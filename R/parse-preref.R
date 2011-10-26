@@ -1,12 +1,12 @@
 # Parse a preref
 parse.preref <- function(lines) {
-
-  # extract the srcref
+  # Extract srcrefs
   srcrefs <- attr(lines, 'srcref')
-  srcrefs$lloc[1] <-   srcrefs$lloc[1] + 1 
+  srcrefs$lloc[1] <- srcrefs$lloc[1] + 1 
   
   delimited.lines <- lines[str_detect(lines, LINE.DELIMITER)]
-  trimmed.lines <- str_trim(str_replace(delimited.lines, LINE.DELIMITER, ""))
+  trimmed.lines <- str_trim(str_replace(delimited.lines, LINE.DELIMITER, ""),
+    "right")
 
   if (length(trimmed.lines) == 0) return(list())
 
@@ -23,13 +23,15 @@ parse.preref <- function(lines) {
   
   # try to parse: stops providing srcref in case of an error 
   err <- tryCatch(parsed.elements <- unlist(lapply(elements[-1], parse.element), 
-    recursive = FALSE), error = function(e) roxygen_stop(e$message, srcref=srcrefs))
+    recursive = FALSE)
+	, warning = function(e) roxygen_warning(e$message, srcref=srcrefs)
+	, error = function(e) roxygen_stop(e$message, srcref=srcrefs))
   
   c(parsed.introduction, parsed.elements)
 } 
 
 # Sequence that distinguishes roxygen comment from normal comment.
-LINE.DELIMITER <- '#+\''
+LINE.DELIMITER <- '\\s*#+\' ?'
 
 # Comment blocks (possibly null) that precede a file's expressions.
 #
@@ -47,11 +49,12 @@ prerefs <- function(srcfile, srcrefs) {
   comments_end <- src_start
   
   src <- readLines(srcfile$filename, warn = FALSE)
-  Map(function(start, end){ 
-		dox <- src[start:end]		
-		attr(dox, 'srcref') <- list(filename = srcfile$filename, lloc = c(start, 0 , end, 0)) 
-		dox
-	}, comments_start, comments_end)
+  extract <- function(start, end) {
+    srcref <- list(filename = srcfile$filename, lloc = c(start, 0 , end, 0))
+    structure(src[start:end], srcref = srcref)
+  }
+  
+  Map(extract, comments_start, comments_end)
 }
 
 # Parse a raw string containing key and expressions.

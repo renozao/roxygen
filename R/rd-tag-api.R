@@ -27,6 +27,8 @@ rd_tag <- function(tag, ..., space = FALSE) {
   } else {
     values <- str_trim(c(...))
   }
+  # Turn non-breaking spaces back into regular spaces
+  values <- str_replace_all(values, fixed("\uA0"), " ")
   str_c("\\", tag, str_c("{", values, "}", collapse = ""), "\n")                         
 }
 
@@ -45,10 +47,13 @@ merge.rd_tag <- function(x, y, ...) {
 #' @S3method format alias_tag
 format_rd <- function(x, ...) {
   vapply(sort(unique(x$values)), rd_tag, tag = x$tag, 
-    FUN.VALUE = character(1))
+    FUN.VALUE = character(1), USE.NAMES = FALSE)
 }
 format.keyword_tag <- format_rd
-format.alias_tag <- format_rd
+format.alias_tag <- function(x, ...) {
+  x$values <- str_replace_all(x$values, fixed("%"), "\\%")
+  format_rd(x, ...)
+}
 
 # Tags that keep the first occurence -----------------------------------------
 format_first <- function(x, ...) {
@@ -58,16 +63,19 @@ format_first <- function(x, ...) {
 #' @S3method format title_tag
 #' @S3method format docType_tag
 #' @S3method format format_tag
+#' @S3method format encoding_tag
 format.name_tag <- format_first
 format.title_tag <- format_first
 format.docType_tag <- format_first
 format.format_tag <- format_first
+format.encoding_tag <- format_first
 
 # Tags collapse their values into a single string ----------------------------
 
 format_collapse <- function(x, ...) {
   values <- str_c(x$values, collapse = "\n\n")
-  rd_tag(x$tag, str_wrap(values, width = 60, indent = 2, exdent = 2), space = TRUE)
+  rd_tag(x$tag, str_wrap(values, width = 60, indent = 2, exdent = 2), 
+    space = TRUE)
 } 
 #' @S3method format author_tag
 #' @S3method format concept_tag
@@ -86,8 +94,11 @@ format.details_tag <- format_collapse
 format.note_tag <- format_collapse
 format.references_tag <- format_collapse
 format.seealso_tag <- format_collapse
-format.source_tag <- format_collapse
-format.usage_tag <- format_collapse
+format.source_tag <- format_collapse 
+format.usage_tag <- function(x, ...) {
+	x$values <- str_replace_all(x$values, fixed("%"), "\\%")
+	format_collapse(x, ...)
+}
 format.value_tag <- format_collapse
 
 
@@ -108,7 +119,8 @@ format.arguments_tag <- function(x, ...) {
   dups <- duplicated(names)
   
   items <- str_c("\\item{", names, "}{", x$values, "}", collapse = "\n\n")
-  rd_tag("arguments", str_wrap(items, width = 60, exdent = 2, indent = 2), space = TRUE)
+  rd_tag("arguments", str_wrap(items, width = 60, exdent = 2, indent = 2),
+    space = TRUE)
 }
 
 #' @S3method format section_tag
