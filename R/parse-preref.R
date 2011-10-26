@@ -22,7 +22,7 @@ parse.preref <- function(lines) {
   parsed.introduction <- parse.introduction(elements[[1]])
   
   # try to parse: stops providing srcref in case of an error 
-  err <- tryCatch(parsed.elements <- unlist(lapply(elements[-1], parse.element), 
+  parsed.elements <- tryCatch(unlist(lapply(elements[-1], parse.element), 
     recursive = FALSE)
 	, warning = function(e) roxygen_warning(e$message, srcref=srcrefs)
 	, error = function(e) roxygen_stop(e$message, srcref=srcrefs))
