@@ -546,7 +546,6 @@ process.usage <- function(partitum) {
     return(new_tag("usage", NULL))
   }
   
-  print(partitum$usage)
   if (!is.null(partitum$usage)) {
     return(new_tag("usage", partitum$usage))
   }
