@@ -93,7 +93,7 @@ make_valid_rdname <- function(filename, show_match=FALSE){
 	if( show_match ) print(m)
 	# replace problematic parts
 	sapply(m, function(x){
-		x[1,2] <- "roxy_"
+		x[1,2] <- "xxx"
 		if( nrow(x) > 1 ){
 			x[1:(nrow(x)-1),3] <- "_"
 			x[1:(nrow(x)-1),5] <- "_"
