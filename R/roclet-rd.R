@@ -424,7 +424,7 @@ process_rdname <- function(name, partitum){
 	# set/lookup chain cache for the end target rdname
 	target <- rdname_cache$chain_compute(key, target)	
 	
-	str_c(target, ".Rd")
+	make_valid_rdname(str_c(target, ".Rd"))
 }
 
 utag <- function(x, y, tag){

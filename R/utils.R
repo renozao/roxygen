@@ -78,6 +78,31 @@ nice_name <- function(x) {
 }
 
 
+is_valid_rdname <- function(filename){
+	str_detect(basename(filename), "^[a-zA-Z][a-zA-Z0-9_.-]*\\.Rd$")
+}
+make_valid_rdname <- function(filename, show_match=FALSE){
+	
+	# do nothing if the filename is already valid
+	if( is_valid_rdname(filename) ) return(filename)
+	
+	# split problematic parts 
+	name <- basename(filename)
+	m <- str_match_all(name, "([^a-zA-Z]?)([^a-zA-Z0-9_.-]*)([a-zA-Z0-9_.-]*)([^a-zA-Z0-9_.-]*)")
+	# for debugging
+	if( show_match ) print(m)
+	# replace problematic parts
+	sapply(m, function(x){
+		x[1,2] <- "roxy_"
+		if( nrow(x) > 1 ){
+			x[1:(nrow(x)-1),3] <- "_"
+			x[1:(nrow(x)-1),5] <- "_"
+		}
+		paste(x[,2], x[,3], x[,4], x[,5], sep='', collapse='')
+	})	
+	
+}
+
 roxygen_stop <- function(..., srcref = NULL) {
   stop(..., srcref_location(srcref), call. = FALSE)
 }
