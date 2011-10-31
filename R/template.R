@@ -24,10 +24,11 @@ process_templates <- function(partitum, base_path) {
   templates <- unlist(template_tags, use.names = FALSE)
   paths <- vapply(templates, template_find, base_path = base_path, 
     FUN.VALUE = character(1), USE.NAMES = FALSE)
-  
-  var_tags <- partitum[names(partitum) == "templateVar"]
-  vars <- lapply(var_tags, "[[", "description")
+    
+  var_tags <- partitum[names(partitum) == "templateVar"]  
+  vars <- lapply(var_tags, "[[", "description")  
   vars <- lapply(vars, type.convert, as.is = TRUE)
+  vars <- setNames(vars, sapply(var_tags, "[[", "name"))
   
   results <- lapply(paths, template_eval, vars = list2env(vars))
   
