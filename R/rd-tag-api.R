@@ -139,3 +139,18 @@ format.examples_tag <- function(x, ...) {
   values <- str_c(x$values, collapse = "\n")
   rd_tag(x$tag, values, space = TRUE)  
 }
+
+
+name_content_tag <- function(x, ..., wrap=FALSE) {
+	names <- vapply(x$values, "[[", "name", FUN.VALUE = character(1))
+	
+	contents <- vapply(x$values, "[[", "content", FUN.VALUE = character(1))
+	if( wrap )
+		contents <- str_wrap(str_trim(contents), width = 60, exdent = 2, indent = 2)
+	
+	str_c("\\", x$tag, "{\\", str_trim(names), "}{", contents, "}\n", collapse = "")	
+}
+#' @S3method format newcommand_tag
+format.newcommand_tag <- name_content_tag
+#' @S3method format renewcommand_tag
+format.renewcommand_tag <- name_content_tag
