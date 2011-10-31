@@ -101,7 +101,7 @@ register.srcref.parser('setGeneric', function(call, env) {
 
 register.srcref.parser('setMethod', function(call, env) {  
   name <- as.character(call$f)
-  sig <- as.character(call$signature)
+  sig <- as.character(call$signature %||% call[[3]])
   if( sig[1] == 'signature' ) sig <- sig[-1]
   res <- list(
     S4method = name,
@@ -119,7 +119,7 @@ register.srcref.parser('setMethod', function(call, env) {
 register.srcref.parser('setReplaceMethod', function(call, env) {
 	pname <- as.character(call$f)
 	name <- paste(pname, '<-', sep='')
-	sig <- as.character(call$signature)
+	sig <- as.character(call$signature %||% call[[3]])
 	if( sig[1] == 'signature' ) sig <- sig[-1]
 	res <- list(
 			S4method = name,
