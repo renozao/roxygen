@@ -2,13 +2,25 @@
 parse.preref <- function(lines) {
   # Extract srcrefs
   srcrefs <- attr(lines, 'srcref')
-  srcrefs$lloc[1] <- srcrefs$lloc[1] + 1 
+  srcrefs$lloc[1] <- srcrefs$lloc[1] 
   
-  delimited.lines <- lines[str_detect(lines, LINE.DELIMITER)]
+  # detect roxygen documentation lines
+  i_preref <- str_detect(lines, LINE.DELIMITER)
+  delimited.lines <- lines[i_preref]
+  
+  # skip blocks with no roxygen documentation 
+  if (length(delimited.lines) == 0) return(list())
+
+  # adapt lloc to cope for empty or comment lines before the roxygen lines  
+  w <- which(i_preref)
+  srcrefs$lloc[1] <- srcrefs$lloc[1] + w[1] - 1
+
   trimmed.lines <- str_trim(str_replace(delimited.lines, LINE.DELIMITER, ""),
     "right")
 
   if (length(trimmed.lines) == 0) return(list())
+  
+  if( all(trimmed.lines == '') ) roxygen_warning("Empty documentation", srcref=srcrefs)
 
   joined.lines <- str_c(trimmed.lines, collapse = '\n')
   ## Thanks to Fegis at #regex on Freenode for the
