@@ -150,11 +150,14 @@ parse.name.description <- function(key, rest, srcref) {
   rest <- str_trim(pieces[, 2])
 
   if (is.null.string(name))
-    roxygen_stop(key, ' requires a name and description', srcref = srcref)
-  else
+    roxygen_stop('@', key, ' requires a name and description', srcref = srcref)
+  else{
+	if ( is.null.string(rest) )
+		roxygen_warning('@', key, ' `', name, '` has an empty description', srcref = srcref)
     as.list(structure(list(list(name=name,
                                 description=rest)),
                       names=key))
+  }
 }
 
 #' Parse an element containing a single name and only a name.

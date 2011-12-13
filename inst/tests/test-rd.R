@@ -248,3 +248,25 @@ test_that("deleted objects not documented", {
   expect_equal(names(out), "f2.Rd")
 })
 
+
+test_that("missing/empty name or description for name-description pairs produces errors/warnings", {
+			
+	tags <- c('param', 'method')
+	lapply(tags, function(key){
+		# missing name
+		expect_error(roc_proc_text(roc, sprintf("#' @name a\n#' @%s\nNULL", key))
+				, sprintf("@%s requires a name and description", key))
+		# empty name
+		expect_error(roc_proc_text(roc, sprintf("#' @name a\n#' @%s    \nNULL", key))
+				, sprintf("@%s requires a name and description", key))
+		
+		# missing description
+		expect_that(roc_proc_text(roc, sprintf("#' @name a\n#' @%s toto\nNULL", key))
+				, gives_warning(sprintf("@%s `toto` has an empty description", key)))
+		# empty description
+		expect_that(roc_proc_text(roc, sprintf("#' @name a\n#' @%s toto   \nNULL", key))
+				, gives_warning(sprintf("@%s `toto` has an empty description", key)))
+	})
+		
+})
+
