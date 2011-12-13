@@ -251,7 +251,7 @@ test_that("deleted objects not documented", {
 
 test_that("missing/empty name or description for name-description pairs produces errors/warnings", {
 			
-	tags <- c('param', 'method')
+	tags <- c('param', 'method', 'newcommand', 'renewcommand')
 	lapply(tags, function(key){
 		# missing name
 		expect_error(roc_proc_text(roc, sprintf("#' @name a\n#' @%s\nNULL", key))
@@ -270,3 +270,40 @@ test_that("missing/empty name or description for name-description pairs produces
 		
 })
 
+test_that("tags @newcommand and @renewcommand are correctly extracted and formated", {
+	out <- roc_proc_text(roc, "
+		#' @newcommand noarg noarg:\\alpha
+		#' @newcommand noarg2 {noarg2:\\alpha}
+		#' @newcommand cmd [1]{cmd:\\texttt{#1}}
+		#' @newcommand cmd2 [1]{cmd2:\\texttt{#1}}
+		#'
+		#' @renewcommand recmdNoarg recmdNoarg:\\beta
+		#' @renewcommand recmdNoarg2 {recmdNoarg2:\\beta}
+		#' @renewcommand recmd [1]{recmd:\\textit{#1}}
+		#' @name a
+		NULL")[[1]]
+
+	# extraction
+	cmd <- get_tag(out, "newcommand")$values
+	expect_equivalent(cmd['noarg'], "noarg:\\alpha")
+	expect_equivalent(cmd['noarg2'], "{noarg2:\\alpha}")
+	expect_equivalent(cmd['cmd'], "[1]{cmd:\\texttt{#1}}")
+	expect_equivalent(cmd['cmd2'], "[1]{cmd2:\\texttt{#1}}")
+	recmd <- get_tag(out, "renewcommand")$values
+	expect_equivalent(recmd['recmdNoarg'], "recmdNoarg:\\beta")
+	expect_equivalent(recmd['recmdNoarg2'], "{recmdNoarg2:\\beta}")
+	expect_equivalent(recmd['recmd'], "[1]{recmd:\\textit{#1}}")
+	
+	# output
+	expect_equal(capture.output(show(get_tag(out, "newcommand")))
+	, c("\\newcommand{\\noarg}{noarg:\\alpha}"
+		,"\\newcommand{\\noarg2}{noarg2:\\alpha}"
+		, "\\newcommand{\\cmd}[1]{cmd:\\texttt{#1}}"
+		, "\\newcommand{\\cmd2}[1]{cmd2:\\texttt{#1}}"
+		))
+	expect_equal(capture.output(show(get_tag(out, "renewcommand")))
+		, c("\\renewcommand{\\recmdNoarg}{recmdNoarg:\\beta}"
+				,"\\renewcommand{\\recmdNoarg2}{recmdNoarg2:\\beta}"
+				, "\\renewcommand{\\recmd}[1]{recmd:\\textit{#1}}"
+		))		
+})
