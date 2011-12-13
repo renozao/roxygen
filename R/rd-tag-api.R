@@ -16,7 +16,7 @@ is.rd_tag <- function(x) inherits(x, "rd_tag")
 
 #' @S3method print rd_tag
 print.rd_tag <- function(x, ...) {
-  cat(format(x), "\n")
+  cat(format(x), "\n", sep='')
 }
 
 # Translate a tag and values into an Rd expression; multiple values get their
