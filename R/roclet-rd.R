@@ -60,11 +60,11 @@ register.srcref.parsers(function(call, env) {
       collapse = "\n")
   }
 
-  # set required aliases
-  if( length(out$assignee) == 1 ){
-  	out <- auto_utag(out, 'aliases', out$assignee)	
-	# set default Rd name
-	out$auto_rdname <- out$assignee
+  # If assignee is a single element: use it as key, default name and alias 
+  if( length(out$assignee) == 1 ){  	
+	out$rdkey <- out$assignee
+	out$name <- out$assignee
+	out$aliases <- out$assignee
   }
 	
   out
@@ -407,10 +407,6 @@ roclet_rd_one <- function(partitum, base_path) {
   
   # Figure out topic name
   name <- partitum$name
-  # Only use assignee if it's a single element
-  if (is.null(name) && length(partitum$assignee) == 1) {
-     name <- partitum$assignee
-  }
   if( is.null(name) )
 	roxygen_stop("Missing name", srcref = partitum$srcref)	
   
