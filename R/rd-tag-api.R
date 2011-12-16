@@ -152,3 +152,112 @@ format.newcommand_tag <- function(x, ...){
 }
 #' @S3method format renewcommand_tag
 format.renewcommand_tag <- format.newcommand_tag
+
+#' @S3method format S4method_tag
+format.S4method_tag <- function(x, ...) {	
+	if( length(x$values) == 0 )	return()
+	
+	doformat <- function(...){
+		s <- capture.output(show(...))
+		print(s)
+		paste(s[2:(length(s)-2)], collapse="\n")
+	}
+	
+	# initialize result string	
+	rd <- new_rd_file()
+	if( length(x$values) == 1 ){
+		doc <- x$value[[1]]
+		# documenting a single S4 method: document the object as normally		
+		if( is.null(doc$title) ){
+			doc$title <- 
+			if( !is.null(doc$S4generic) ) str_c("Generic Function ", doc$S4generic)
+			else str_c("Method ", doc$S4method, ",", str_c(doc$signature, collapse=","))
+		}
+		# use title from first generic
+		add_tag(rd, new_tag('title', doc$title))				
+		if( !is.null(doc$description) ) 
+			add_tag(rd, new_tag('description', doc$description))				
+		if( !is.null(doc$details) )
+			add_tag(rd, new_tag('details', doc$details))
+		# add S4 usage if S4 method (not generic) 
+		if( is.null(doc$S4generic) ) 
+			add_tag(rd, new_tag('usage', str_c("\\S4method{", doc$S4method, "}{", str_c(doc$signature, collapse=","), "}(", doc$S4call, ")")))
+	}else{		
+		# documenting multiple S4 methods:
+		# - use \description{...} for the generics 
+		# - use \section{Method}{...} for the description of S4 methods
+		
+		# check if any generic is documented
+		wgeneric <- sapply(x$values, function(data) !is.null(data$S4generic))		
+		genericDef <- x$values[wgeneric]
+		# build vector with the names of the generics that are document here  
+		genericDefName <- character()
+		genericNames <- unique(sapply(x$values, '[[', 'S4method'))		
+		stopifnot( length(genericNames) > 0 )
+		plural <- if( length(genericNames) > 1 ) 's'
+		# add description and title from the generic(s)		
+		if( length(genericDef)>0 ){
+			# fill vector of generic names
+			genericDefName <- unique(sapply(genericDef, '[[', 'S4generic'))			
+			# title
+			title <- genericDef[[1]]$title %||% 
+					str_c("Generic function", plural, " ", str_c("`", genericDefName, "`", collapse=', '))				
+				
+			# merge descriptions
+			desc <- 
+			if( length(genericNames) == 1 ) genericDef[[1]]$description %||% title
+			else sapply(genericDef, function(d) str_c("\\code{", d$S4generic, '}: ', d$description %||% d$title))
+			# merge details
+			details <- 
+			sapply(genericDef, function(d){
+				if( is.null(d$details) ) return(NA)
+				str_c("\\code{", d$S4generic, '}: ', d$details )
+			})
+			details <- details[!is.na(details)]
+			#
+	
+			# use title from first generic
+			add_tag(rd, new_tag('title', title))				
+			add_tag(rd, new_tag('description', desc))				
+			if( length(details) > 0 )
+				add_tag(rd, new_tag('details', details))
+		}else{ # add default description			
+			desc <- str_c("This file contains the documentation for S4 methods defined for the generic", plural, " "
+					, str_c("\\code{", genericNames, "}", collapse=", "), ".")
+			title <- str_c("Methods for Generic", plural, ' '
+							, str_c("`", genericNames, "`", collapse=", "))
+			add_tag(rd, new_tag('title', title))
+			add_tag(rd, new_tag('description', desc))					
+		}
+				
+		# generate a 'Methods' section that describes each S4 method
+		methods <- x$values[!wgeneric]
+		if( length(methods) > 0 ){
+			
+			# usage
+			lapply(methods, function(doc){				
+				add_tag(rd, new_tag('usage', str_c("\\S4method{", doc$S4method, "}{", str_c(doc$signature, collapse=","), "}(", doc$S4call, ")")))
+			})			
+					
+			# short description of each S4 method
+			contents <- lapply(methods, function(data){
+				d <- data$description %||% data$title				
+				if( is.null(d) ) return(NA)
+				str_c("\\item{", data$S4alias, "}{"
+					, str_c(data$title, data$description, data$details, sep="\n\n")
+					, "\n"
+					#, if( data$link ) str_c("See details in \\code{\\link{", data$S4alias,"}}.")
+					, if( !data$S4method %in% genericDefName ) str_c("See generic \\code{\\link{", data$S4method,"}}.")
+					, "}\n")
+			})
+			contents <- contents[!is.na(contents)]
+			if( length(contents) > 0 ){
+				contents <- paste(contents, collapse="\n")
+				contents <- str_c("\n\\describe{\n", contents, "\n}\n")
+				add_tag(rd, process.section(NULL, str_c('Methods:', contents)))				
+			}			
+		}
+	}
+	
+	format(rd)
+}

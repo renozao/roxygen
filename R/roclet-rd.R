@@ -76,6 +76,7 @@ register.srcref.parser('setClass', function(call, env) {
   cname <- paste(name, 'class', sep='-')
   # add default tags
   list( rdkey = cname
+	, S4class = name # S4class flag
   	, name = cname
 	, aliases = c(name, cname)
 	)  
@@ -85,7 +86,10 @@ register.srcref.parser('setGeneric', function(call, env) {
   name <- as.character(call$name)	
   mname <- paste(name, 'methods', sep='-')
   # add default tags
-  list(name = mname
+  list(S4generic = name
+  	, S4method = name
+	, S4alias = mname
+  	, name = mname
   	, docType = 'methods'
 	, rdkey = sub('<-', '', mname, fixed=TRUE)
 	, aliases = c(name, mname)
@@ -93,6 +97,7 @@ register.srcref.parser('setGeneric', function(call, env) {
 	)
 })
 
+S4call <- function(ccall) str_match(ccall[4], "\\(([^)(]*)\\)")[,2]
 register.srcref.parser('setMethod', function(call, env) {  
   name <- as.character(call$f)
   sig <- as.character(call$signature %||% call[[3]])
@@ -100,7 +105,11 @@ register.srcref.parser('setMethod', function(call, env) {
   mname <- paste(name, 'methods', sep='-')
   alias <- paste(paste(c(name, sig), collapse=','), 'method', sep='-')
   # add default tags
-  list(name = alias
+  list(
+    S4method = name
+	, S4alias = alias
+	, S4call = S4call(as.character(call))
+	, name = alias
 	, signature = sig
 	, rdkey = sub('<-', '', mname, fixed=TRUE)
 	, aliases = alias	
@@ -116,7 +125,11 @@ register.srcref.parser('setReplaceMethod', function(call, env) {
 	# use the same Rdname as the non replacement method
 	mname <- paste(pname, 'methods', sep='-')
 	alias <- paste(paste(c(name, sig), collapse=','), 'method', sep='-')
-	list(name = alias
+	list(
+		S4method = name
+		, S4alias = alias
+		, S4call = S4call(as.character(call))
+		, name = alias
 		, signature = sig
 		, rdkey = mname
 		, aliases = alias
@@ -540,7 +553,8 @@ process_description <- function(partitum, base_path) {
     paragraphs <- paragraphs[-1]
   } else {
     # Description is required, so if missing description, repeat title.
-    description <- title
+    # Only for non S4 methods
+	description <- NULL 
   }
 
   # Every thing else = details, combined with @details.
@@ -551,9 +565,20 @@ process_description <- function(partitum, base_path) {
     details <- NULL
   }
 
-  c(new_tag("title", title),
-    new_tag("description", description), 
+  if( is.null(partitum$S4method) ){
+  	c(new_tag("title", title),
+    new_tag("description", description %||% title), 
     new_tag("details", details))
+  
+  }else { # for S4 methods: wrap everything in a S4method tag
+	  partitum$title <- if( !is.null(description) ) title
+	  partitum$description <- if( !is.null(description) ) description else title
+	  partitum$details <- details	  
+	  params <- all_tags(partitum, "param")
+	  partitum$link <- length(params) > 0
+	  s4 <- list(partitum)
+	  new_tag("S4method", s4)
+  }
 }
 
 process.arguments <- function(partitum) {
