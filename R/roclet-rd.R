@@ -73,49 +73,38 @@ register.srcref.parsers(function(call, env) {
 
 register.srcref.parser('setClass', function(call, env) {
   name <- as.character(call$Class)
-  res <- list(S4class = name)
-  
-  cname <- paste(name, 'class', sep='-')  
-  # set default Rd name
-  res$auto_rdname <- cname
-  # set required aliases
-  res <- auto_utag(res, 'aliases', c(name, cname))  
-  
-  res
+  cname <- paste(name, 'class', sep='-')
+  # add default tags
+  list( rdkey = cname
+  	, name = cname
+	, aliases = c(name, cname)
+	)  
 })
 
 register.srcref.parser('setGeneric', function(call, env) {
   name <- as.character(call$name)	
-  res <- list(S4generic = name)
-    
   mname <- paste(name, 'methods', sep='-')
-  # set required docType
-	res <- auto_xtag(res, 'docType', 'methods')  
-  # set default Rd name
-	res$auto_rdname <- sub('<-', '', mname, fixed=TRUE)
-  # set required aliases
-	res <- auto_utag(res, 'aliases', c(name, mname))
-  # set required keyword 'methods'
-	res <- auto_ctag(res, 'keywords', 'methods')
-	
-	res
+  # add default tags
+  list(name = mname
+  	, docType = 'methods'
+	, rdkey = sub('<-', '', mname, fixed=TRUE)
+	, aliases = c(name, mname)
+	, keywords = 'methods'
+	)
 })
 
 register.srcref.parser('setMethod', function(call, env) {  
   name <- as.character(call$f)
   sig <- as.character(call$signature %||% call[[3]])
   if( sig[1] == 'signature' ) sig <- sig[-1]
-  res <- list(
-    S4method = name,
-	signature = sig)
-
-	mname <- paste(name, 'methods', sep='-')
-	# set default Rd name
-	res$auto_rdname <- sub('<-', '', mname, fixed=TRUE)
-	# set required aliases
-	res <- auto_utag(res, 'aliases', paste(paste(c(name, sig), collapse=','), 'method', sep='-'))	
-	
-	res
+  mname <- paste(name, 'methods', sep='-')
+  alias <- paste(paste(c(name, sig), collapse=','), 'method', sep='-')
+  # add default tags
+  list(name = alias
+	, signature = sig
+	, rdkey = sub('<-', '', mname, fixed=TRUE)
+	, aliases = alias	
+	)
 })
 
 register.srcref.parser('setReplaceMethod', function(call, env) {
@@ -123,18 +112,15 @@ register.srcref.parser('setReplaceMethod', function(call, env) {
 	name <- paste(pname, '<-', sep='')
 	sig <- as.character(call$signature %||% call[[3]])
 	if( sig[1] == 'signature' ) sig <- sig[-1]
-	res <- list(
-			S4method = name,
-			signature = sig)
 	
 	# use the same Rdname as the non replacement method
 	mname <- paste(pname, 'methods', sep='-')
-	# set default Rd name
-	res$auto_rdname <- mname
-	# set required aliases
-	res <- auto_utag(res, 'aliases', paste(paste(c(name, sig), collapse=','), 'method', sep='-'))
-	
-	res
+	alias <- paste(paste(c(name, sig), collapse=','), 'method', sep='-')
+	list(name = alias
+		, signature = sig
+		, rdkey = mname
+		, aliases = alias
+	)	
 })
 
 #' Roclet: make Rd files.
@@ -384,41 +370,11 @@ all_tags <- function(partitum, tag){
 	partitum[names(partitum) == tag]
 }
 
-auto_tag <- function(partitum, type, tag, value){
-	if( is.null(partitum$autotags) )
-		partitum$autotags <- list()	
-	partitum$autotags[[type]][[tag]] <- value
-	partitum
-}
-
-auto_ctag <- function(partitum, tag, value) auto_tag(partitum, 'ctag', tag, value)
-auto_utag <- function(partitum, tag, value) auto_tag(partitum, 'utag', tag, value)
-auto_xtag <- function(partitum, tag, value) auto_tag(partitum, 'xtag', tag, value)
-
-#' Add R Default Tags to a Partitum
-#' 
-#' Add default tags sucha as:
-#' - S4 class, generic and methods required aliases: A-class, FUN-methods, ...    
-#' 
-#' @keywords internal
-process_autotags <- function(partitum){
-	
-	if( is.null(partitum$autotags) ) return(partitum)
-	
-	sapply(names(partitum$autotags), function(f){
-		x <- partitum$autotags[[f]]
-		sapply(names(x), function(tag){
-			partitum <<- do.call(f, list(partitum, x, tag))
-		})
-	})
-
-	partitum
-}
 
 process_rdname <- function(name, partitum){
 		
 	# primary target rdname	
-	key <- partitum$auto_rdname %||% name
+	key <- partitum$rdkey %||% name
 	target <- partitum$merge %||% partitum$rdname %||% key 
 	if( is.null(key) ){
 		print(partitum)
@@ -431,17 +387,6 @@ process_rdname <- function(name, partitum){
 	make_valid_rdname(str_c(target, ".Rd"))
 }
 
-utag <- function(x, y, tag){
-	c(x, setNames(y[[tag]], rep(tag, length(y[[tag]]))))	
-}
-ctag <- function(x, y, tag){
-	x[[tag]] <- c(x[[tag]], y[[tag]])
-	x
-}
-xtag <- function(x, y, tag){
-	x[[tag]] <- x[[tag]] %||% y[[tag]]
-	x
-}
 
 # Test if A Partitum has Some Tags
 # @keywords internal
@@ -461,17 +406,13 @@ roclet_rd_one <- function(partitum, base_path) {
   if (any(names(partitum) == "noRd")) return()
   
   # Figure out topic name
-  name <- partitum$name %||% partitum$S4class %||% partitum$S4method %||%
-    partitum$S4generic
+  name <- partitum$name
   # Only use assignee if it's a single element
   if (is.null(name) && length(partitum$assignee) == 1) {
      name <- partitum$assignee
   }
   if( is.null(name) )
 	roxygen_stop("Missing name", srcref = partitum$srcref)	
-
-  # add auto tags to the partitum
-  partitum <- process_autotags(partitum)
   
   # Work out file name and initialise Rd object
   filename <- process_rdname(name, partitum)
