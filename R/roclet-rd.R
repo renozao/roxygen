@@ -24,7 +24,8 @@ register.preref.parsers(parse.value,
                         'source', 
                         'encoding',
                         'description',
-                        'details')
+                        'details',
+						'cite')
 
 register.preref.parsers(parse.name.description,
                         'param',
@@ -39,6 +40,28 @@ register.preref.parsers(parse.default,
                         'noRd',
 						'autoRd')
 
+# parser for cite tags: look up and format bibentries from inst/REFERENCES.bib
+register.preref.parsers('cite', 
+	parser = function(key, name, srcref) {
+		keys <- unlist(parse.name(key, name, srcref))
+		keys <- strsplit(keys, ",", fixed=TRUE)[[1]]		
+		# load bibentries from the package inst/ directory
+		pkgdir <- roxygenGlobal('package.dir')
+		bibfile <- 
+		if( !is.null(pkgdir) ) file.path(pkgdir, 'inst/REFERENCES.bib')
+		else system.file('tests/REFERENCES.bib', package='roxygen2')
+		if( file.exists(bibfile) ){
+			res <- setNames(lapply(keys, cite, bibfile), rep('cite', length(keys)))
+			# check for unfound keys
+			nf <- which(res == "")
+			if( length(nf) > 0 ){
+				roxygen_warning("Bibtex entrie(s) not found: ", paste(keys[nf], collapse=', '), srcref = srcref)
+				res <- res[-nf]
+			}
+			res
+		}
+	}
+)
 
 register.srcref.parsers(function(call, env) {
   assignee <- as.character(call[[2]])
@@ -447,6 +470,9 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, process_had_tag(partitum, 'source'))
   add_tag(rd, process_had_tag(partitum, 'seealso'))
   add_tag(rd, process_had_tag(partitum, "references"))
+  add_tag(rd, process_had_tag(partitum, "cite", function(tag, param){		
+		new_tag("references", param)	  
+	}))
   add_tag(rd, process_had_tag(partitum, 'concept'))
   add_tag(rd, process_had_tag(partitum, 'return', function(tag, param) {
       new_tag("value", param)

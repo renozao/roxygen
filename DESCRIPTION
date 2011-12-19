@@ -11,7 +11,8 @@ Maintainer: Hadley Wickham <hadley@rice.edu>
 Imports:
     stringr (>= 0.5),
     tools,
-    brew
+    brew,
+	bibtex
 Suggests:
     testthat
 Depends:

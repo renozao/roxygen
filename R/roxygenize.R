@@ -1,3 +1,15 @@
+
+# Get/Set global variables accessible during all the roxygenation process.
+# e.g. package.dir
+roxygenGlobal <- local({
+	.vars <- list()
+	function(name, value, clear=FALSE){
+		if( clear ){ .vars <<- list(); return()} 
+		if( missing(value) ) .vars[[name]]
+		else .vars[[name]] <<- value
+	}
+})
+
 #' Process a package with the Rd, namespace and collate roclets.
 #'
 #' This is the workhorse function that uses roclets, the built-in document
@@ -24,6 +36,11 @@ roxygenize <- function(package.dir,
                        unlink.target=FALSE,
                        roclets=c("collate", "namespace", "rd")) {
 
+  # clean globals
+  roxygenGlobal(clear=TRUE)
+  # add package.dir to the globals
+  roxygenGlobal('package.dir', normalizePath(package.dir))
+  
   skeleton <- c(roxygen.dir, file.path(roxygen.dir, c("man", "inst")))
 
   if (copy.package) {
@@ -51,6 +68,7 @@ roxygenize <- function(package.dir,
     collate_path <- file.path(roxygen.dir, "R", collate)
     collate_exists <- Filter(file.exists, collate_path)
     r_files <- c(collate_exists, setdiff(r_files, collate_exists))
+	r_files <- collate_exists
     # load the dependencies
     pkgs <- paste(c(desc$Depends, desc$Imports), collapse = ", ")
     if (pkgs != "") {

@@ -325,3 +325,33 @@ test_that("tags @newcommand and @renewcommand are correctly extracted and format
 				, "\\renewcommand{\\recmd}[1]{recmd:\\textit{#1}}"
 		))		
 })
+
+
+test_that("tags @cite generates a citation", {			
+	out <- roc_proc_text(roc, "
+		#' @name testCite
+		#' @cite Toto2008
+		#' @cite Mimi2009,Sissi2010
+		NULL")[[1]]
+			
+	expect_match_all <- function(x, y) sapply(y, function(y) expect_match(x, y))
+	# extraction
+	refs <- get_tag(out, "references")$values	
+	expect_match_all(refs[1], c("Toto A", "2008", "On Bullshit", "OnePublisher"))
+	expect_match_all(refs[2], c("Mimi B", "2009", "On More Bullshit", "TwoPublisher"))
+	expect_match_all(refs[3], c("Sissi C", "2010", "On Even More Bullshit", "ThreePublisher"))
+	
+	# unfound keys throw warnings	
+	expect_that(roc_proc_text(roc, "
+				#' @name testCite2
+				#' @cite Toto2008
+				#' @cite NotFound
+				NULL")[[1]]
+		, gives_warning("Bibtex entrie\\(s\\) not found: NotFound"))
+	expect_that(roc_proc_text(roc, "
+						#' @name testCite2
+						#' @cite Toto2008
+						#' @cite Mimi2009,NotFound2,NotFound3
+						NULL")[[1]]
+		, gives_warning("Bibtex entrie\\(s\\) not found: NotFound2, NotFound3"))
+})

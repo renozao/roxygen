@@ -116,3 +116,47 @@ srcref_location <- function(srcref = NULL) {
   if (is.null(srcref)) return()
   str_c(" in block ", basename(srcref$filename), ":", srcref$lloc[1])
 }
+
+
+#' Citing Package References
+#' 
+#' Create a citation string from package specific BibTex entries, suitable to 
+#' be used in Rd files.
+#' The entries are looked in a file named REFERNCES.bib in the package's root 
+#' directory (i.e. inst/ in development mode).
+#'  
+#' @param key character vector of BibTex keys
+#' @param bibentry a bibentry object, a Bibtex filename or a string like 
+#' \code{"package:PKGNAME"}, where to look for entries.
+#' @param ... extra parameters passed to \code{format.bibentry}
+#' @return a character string containing the text formated BibTex entries 
+#' @keywords internal
+#' @import bibtex
+cite <- function(key, bibentry, ...){
+	# detect package name if necessary
+	if( missing(bibentry) ){
+		pkg <- Sys.getenv('R_PACKAGE_NAME')
+		if( is.null(pkg) )
+			pkg <- Sys.getenv('R_INSTALL_PKG')
+		if( is.null(pkg) )
+			stop("Could not identify package")
+		bibentry <- paste('package:', pkg, sep='')
+	}
+	
+	# load relevant Bibtex file
+	bibs <- if( is(bibentry, 'bibentry') ) bibentry
+			else if( is.character(bibentry) ){
+				p <- str_match(bibentry, "^package:(.*)")[,2]
+				if( is.na(p) ) bibtex::read.bib(file=bibentry)
+				else bibtex::read.bib(package=p)
+			}else
+				stop("Invalid argument `bibentry`: expected bibentry object or character string [", class(bibentry), "]")
+	
+	if( !is.character(key) )
+		stop("Invalid argument `key`: must be a character vector.")
+	
+	# extract the Bibtex keys
+	k <- sapply(bibs, function(x) x$key)
+	# format the entries
+	paste(format(bibs[k %in% key], ...), collapse="\n\n")
+}
