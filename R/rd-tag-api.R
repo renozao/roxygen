@@ -95,7 +95,93 @@ format.concept_tag <- format_collapse
 format.description_tag <- format_collapse
 format.details_tag <- format_collapse
 format.note_tag <- format_collapse
-format.references_tag <- format_collapse
+
+# Lookup References from Bibliography Files
+#
+# - inst/REFERENCES.bib if present
+# - tags @bibliography: will have populate global variable 'bibfiles'
+lookupBibentry <- function(keys){
+	
+	emptybib <- function(){ x <- list(); class(x) <- 'bibentry'; x}
+	
+	bibcache <- roxygenGlobal('bibentries')
+	if( is.null(bibcache) ) bibcache <- emptybib()
+	on.exit( roxygenGlobal('bibentries', bibcache) )
+	
+	refbibs <- roxygenGlobal('REFERENCES')	
+	on.exit( roxygenGlobal('REFERENCES', refbibs), add=TRUE )
+	pkgdir <- roxygenGlobal('package.dir')
+	reffile <- file.path(pkgdir, 'inst/REFERENCES.bib')
+	# load default library if necessary
+	if( is.null(refbibs) ){
+		refbibs <- 
+		if( file.exists(reffile) ){
+			message("Loading bibliography file '", reffile, "'")
+			read.bib(reffile)
+		}
+		else emptybib()		
+	}
+	
+	bibfiles <- roxygenGlobal('bibfiles')
+	on.exit( roxygenGlobal('bibfiles', bibfiles), add=TRUE)
+	
+	getEntry <- function(key, bibentry){
+		k <- unlist(bibentry$key)
+		bibentry[k %in% key]		
+	}
+	
+	sapply(keys, function(k){
+		#message("Lookup for key '", k, "'")
+		cit <- getEntry(k, refbibs)		
+		if( length(cit) == 0 ){ # try loading from other bibfiles
+			cit <- getEntry(k, bibcache)
+			if( length(cit) == 0 ){
+				for(f in bibfiles){
+					message("Loading bibliography file '", f, "' ... ", appendLF=FALSE)
+					suppressWarnings(suppressMessages(capture.output(bibs <- read.bib(f))))
+					message("OK")
+					bibcache <<- c(bibcache, bibs)
+					bibfiles <<- bibfiles[!bibfiles==f]				
+					cit <- getEntry(k, bibcache)
+					if( length(cit) != 0 ) break;				
+				}
+			}
+			# add the entry to file REFERENCES.bib if necessary
+			if( length(cit) != 0 ){
+				message("Adding entry '", k, " to REFERENCES.bib ... ", appendLF=FALSE)
+				write.bib(cit, file=reffile, append=TRUE, verbose=FALSE)
+				message("OK")
+			}
+		}		
+		
+		format(cit)
+	})
+}
+
+format.references_tag <- function(x, ...){	
+	# detect citations from full references
+	refs <- x$values		
+	info <- str_match(refs, "^@cite:([^:]+):([0-9]+)-([0-9]+):(.*)")
+	keys <- info[,5]
+	ikeys <- which(!is.na(keys))	
+	if( length(ikeys) > 0  ){
+		keys <- keys[ikeys]
+		res <- lookupBibentry(keys)		
+		# check for unfound keys
+		nf <- which(res == "")
+		if( length(nf) > 0 ){
+			# extract srcref info
+			info <- info[ikeys[1],]
+			srcref <- list(filename=info[2], lloc=c(info[3],0,info[4],0))
+			roxygen_warning("Bibtex entrie(s) not found: ", paste(keys[nf], collapse=', '), srcref=srcref)
+			res <- res[-nf]
+			ikeys <- ikeys[-nf]
+		}
+		x$values[ikeys] <- res
+	}
+	# collapse all references
+	format_collapse(x)
+}
 format.seealso_tag <- format_collapse
 format.source_tag <- format_collapse
 format.usage_tag <- function(x, ...) format_collapse(x, ..., exdent = 4)

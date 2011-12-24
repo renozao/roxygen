@@ -118,45 +118,86 @@ srcref_location <- function(srcref = NULL) {
 }
 
 
-#' Citing Package References
-#' 
-#' Create a citation string from package specific BibTex entries, suitable to 
-#' be used in Rd files.
-#' The entries are looked in a file named REFERNCES.bib in the package's root 
-#' directory (i.e. inst/ in development mode).
-#'  
-#' @param key character vector of BibTex keys
-#' @param bibentry a bibentry object, a Bibtex filename or a string like 
-#' \code{"package:PKGNAME"}, where to look for entries.
-#' @param ... extra parameters passed to \code{format.bibentry}
-#' @return a character string containing the text formated BibTex entries 
-#' @keywords internal
-#' @import bibtex
-cite <- function(key, bibentry, ...){
-	# detect package name if necessary
-	if( missing(bibentry) ){
-		pkg <- Sys.getenv('R_PACKAGE_NAME')
-		if( is.null(pkg) )
-			pkg <- Sys.getenv('R_INSTALL_PKG')
-		if( is.null(pkg) )
-			stop("Could not identify package")
-		bibentry <- paste('package:', pkg, sep='')
+# From the bibtex package dev version
+write.bib <- function(entry=NULL, file="Rpackages.bib", append = FALSE, verbose = TRUE)
+{
+	# special handling of file=NULL: use stdout()
+	if( is.null(file) ){
+		file <- stdout()
+		verbose <- FALSE
+	}	
+	## use all installed packages if nothing is specified
+	if( is.null(entry) ){ 
+		if( verbose ) message("Generating Bibtex entries for all installed packages ", appendLF=FALSE)
+		entry <- unique(installed.packages()[,1])
+		if( verbose ) message("[", length(entry), "]")
 	}
 	
-	# load relevant Bibtex file
-	bibs <- if( is(bibentry, 'bibentry') ) bibentry
-			else if( is.character(bibentry) ){
-				p <- str_match(bibentry, "^package:(.*)")[,2]
-				if( is.na(p) ) bibtex::read.bib(file=bibentry)
-				else bibtex::read.bib(package=p)
-			}else
-				stop("Invalid argument `bibentry`: expected bibentry object or character string [", class(bibentry), "]")
+	bibs <- 
+			if( is(entry, 'bibentry') )	entry
+			else if( is.character(entry) ){
+				if( length(entry) == 0 ){
+					if( verbose ) message("Empty package list: nothing to be done.")
+					return(invisible())
+				}
+				
+				pkgs <- entry
+				bibs <- sapply(pkgs, function(x) try(citation(x)), simplify=FALSE)
+				#bibs <- lapply(pkgs, function(x) try(toBibtex(citation(x))))
+				n.installed <- length(bibs)
+				
+				## omit failed citation calls
+				ok <- sapply(bibs, is, 'bibentry')
+				pkgs <- pkgs[ok]
+				bibs <- bibs[ok]
+				n.converted <- sum(ok)
+				
+				## add bibtex keys to each entry
+				pkgs <- lapply(seq_along(pkgs), function(i) if(length(bibs[[i]]) > 1)
+								paste(pkgs[i], c('', 2:length(bibs[[i]])), sep = "") else pkgs[i])
+				pkgs <- do.call("c", pkgs)
+				bibs <- do.call("c", bibs)		
+				# formatting function for bibtex keys:
+				# names with special characters must be enclosed in {}, others not.
+				as.bibkey <- function(x){
+					i <- grep("[.]", x)
+					if( length(i) > 0 )
+						x[i] <- paste("{", x[i], "}", sep='')
+					x
+				}		
+				bibs <- mapply(function(b,k){ if( is.null(b$key) ) b$key <- k; b}, bibs, pkgs, SIMPLIFY=FALSE)
+				bibs <- do.call("c", bibs)
+				
+				if(verbose) message("Converted ", n.converted, " of ", n.installed, " package citations to BibTeX")					
+				bibs
+			} else
+				stop("Invalid argument `entry`: expected a bibentry object or a character vector of package names.")
 	
-	if( !is.character(key) )
-		stop("Invalid argument `key`: must be a character vector.")
+	if( length(bibs) == 0 ){
+		if( verbose ) message("Empty bibentry list: nothing to be done.")
+		return(invisible())
+	}
 	
-	# extract the Bibtex keys
-	k <- sapply(bibs, function(x) x$key)
-	# format the entries
-	paste(format(bibs[k %in% key], ...), collapse="\n\n")
+	## write everything to the .bib file
+	fh <- if( is.character(file) ){
+				if( !grepl("\\.bib$", file) ) # add .bib extension if necessary 
+					file <- paste(file, '.bib', sep='')
+				fh <- file(file, open = if(append) "a+" else "w+" )
+				on.exit( if( isOpen(fh) ) close(fh) )
+				fh
+			} else if( is(file, 'connection') )
+				file
+			else
+				stop("Invalid argument `file`: expected a filename, NULL, or a connection [", class(file), "]")
+	
+	if( !is(fh, 'connection') )
+		stop("Invalid connection: ", fh)		
+	file.desc <- summary(fh)['description']
+	
+	if( verbose ) message(if( append ) "Adding " else "Writing ", length(bibs) , " Bibtex entries ... ", appendLF=FALSE)
+	writeLines(toBibtex(bibs), fh)
+	if(verbose) message("OK\nResults written to file '", file.desc, "'")
+	
+	## return Bibtex items invisibly
+	invisible(bibs)
 }

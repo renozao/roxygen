@@ -24,8 +24,7 @@ register.preref.parsers(parse.value,
                         'source', 
                         'encoding',
                         'description',
-                        'details',
-						'cite')
+                        'details')
 
 register.preref.parsers(parse.name.description,
                         'param',
@@ -40,26 +39,26 @@ register.preref.parsers(parse.default,
                         'noRd',
 						'autoRd')
 
-# parser for cite tags: look up and format bibentries from inst/REFERENCES.bib
+# parser for @bibliography tags: store filenames in global variable 'bibfiles'
+register.preref.parsers('bibliography', 
+	parser = function(key, name, srcref) {
+		file <- parse.value(key, name, srcref)[[1]]
+		if( file.exists(file) )
+			roxygenGlobal('bibfiles', c(roxygenGlobal('bibfiles'), file))
+		else roxygen_warning("Bibliography file '", file, "' does not exists", srcref=srcref)
+		NULL
+	}
+)
+
+# parser for @cite tags: prepare data for format.references
 register.preref.parsers('cite', 
 	parser = function(key, name, srcref) {
-		keys <- unlist(parse.name(key, name, srcref))
-		keys <- strsplit(keys, ",", fixed=TRUE)[[1]]		
-		# load bibentries from the package inst/ directory
-		pkgdir <- roxygenGlobal('package.dir')
-		bibfile <- 
-		if( !is.null(pkgdir) ) file.path(pkgdir, 'inst/REFERENCES.bib')
-		else system.file('tests/REFERENCES.bib', package='roxygen2')
-		if( file.exists(bibfile) ){
-			res <- setNames(lapply(keys, cite, bibfile), rep('cite', length(keys)))
-			# check for unfound keys
-			nf <- which(res == "")
-			if( length(nf) > 0 ){
-				roxygen_warning("Bibtex entrie(s) not found: ", paste(keys[nf], collapse=', '), srcref = srcref)
-				res <- res[-nf]
-			}
-			res
-		}
+		keys <- str_split(str_trim(name), "\\s+")[[1]]		
+		# add srcref info
+		res <- setNames(str_c("@cite:", srcref$filename
+				, ':', srcref$lloc[1], '-', srcref$lloc[3],':'
+				, keys), rep('cite', length(keys)))
+		as.list(res)
 	}
 )
 
