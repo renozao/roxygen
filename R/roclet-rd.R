@@ -43,10 +43,18 @@ register.preref.parsers(parse.default,
 register.preref.parsers('bibliography', 
 	parser = function(key, name, srcref) {
 		file <- parse.value(key, name, srcref)[[1]]
-		if( file.exists(file) )
-			roxygenGlobal('bibfiles', c(roxygenGlobal('bibfiles'), file))
-		else roxygen_warning("Bibliography file '", file, "' does not exists", srcref=srcref)
-		NULL
+		if( file.exists(file) ){
+			file <- normalizePath(file)
+			bibfiles <- roxygenGlobal('bibfiles')
+			# add the file to the global vector of bibliography files
+			if( length(bibfiles) == 0 || !file %in% names(bibfiles) ){
+				bibfiles <- c(bibfiles, FALSE)
+				names(bibfiles)[length(bibfiles)] <- file
+				roxygenGlobal('bibfiles', bibfiles)
+			}
+		}else 
+			roxygen_warning("Bibliography file '", file, "' does not exists", srcref=srcref)
+		file
 	}
 )
 

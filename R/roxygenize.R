@@ -5,7 +5,8 @@ roxygenGlobal <- local({
 	.vars <- list()
 	function(name, value, clear=FALSE){
 		if( clear ){ .vars <<- list(); return()} 
-		if( missing(value) ) .vars[[name]]
+		if( missing(name) ) .vars
+		else if( missing(value) ) .vars[[name]]
 		else .vars[[name]] <<- value
 	}
 })
@@ -68,7 +69,6 @@ roxygenize <- function(package.dir,
     collate_path <- file.path(roxygen.dir, "R", collate)
     collate_exists <- Filter(file.exists, collate_path)
     r_files <- c(collate_exists, setdiff(r_files, collate_exists))
-	r_files <- collate_exists
     # load the dependencies
     pkgs <- paste(c(desc$Depends, desc$Imports), collapse = ", ")
     if (pkgs != "") {

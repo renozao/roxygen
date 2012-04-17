@@ -115,7 +115,7 @@ lookupBibentry <- function(keys){
 	# load default library if necessary
 	if( is.null(refbibs) ){
 		refbibs <- 
-		if( file.exists(reffile) ){
+		if( length(reffile)>0 && file.exists(reffile) ){
 			message("Loading bibliography file '", reffile, "'")
 			read.bib(reffile)
 		}
@@ -136,25 +136,29 @@ lookupBibentry <- function(keys){
 		if( length(cit) == 0 ){ # try loading from other bibfiles
 			cit <- getEntry(k, bibcache)
 			if( length(cit) == 0 ){
-				for(f in bibfiles){
-					message("Loading bibliography file '", f, "' ... ", appendLF=FALSE)
-					suppressWarnings(suppressMessages(capture.output(bibs <- read.bib(f))))
-					message("OK")
-					bibcache <<- c(bibcache, bibs)
-					bibfiles <<- bibfiles[!bibfiles==f]				
+				for(i in seq_along(bibfiles)){
+					f <- names(bibfiles)[i]
+					if( !bibfiles[i] ){
+						message("Loading bibliography file '", f, "' ... ", appendLF=FALSE)
+						suppressWarnings(suppressMessages(capture.output(bibs <- read.bib(f))))
+						message("OK")
+						bibfiles[i] <<- TRUE
+						if( length(bibs)>0 )
+							bibcache <<- c(bibcache, bibs)
+					}					
 					cit <- getEntry(k, bibcache)
 					if( length(cit) != 0 ) break;				
 				}
 			}
 			# add the entry to file REFERENCES.bib if necessary
-			if( length(cit) != 0 ){
+			if( length(cit) != 0 && length(reffile)>0 ){
 				message("Adding entry '", k, " to REFERENCES.bib ... ", appendLF=FALSE)
 				write.bib(cit, file=reffile, append=TRUE, verbose=FALSE)
 				message("OK")
 			}
 		}		
-		
-		format(cit)
+		if( length(cit) == 0 ) ""
+		else format(cit)
 	})
 }
 
@@ -174,11 +178,13 @@ format.references_tag <- function(x, ...){
 			info <- info[ikeys[1],]
 			srcref <- list(filename=info[2], lloc=c(info[3],0,info[4],0))
 			roxygen_warning("Bibtex entrie(s) not found: ", paste(keys[nf], collapse=', '), srcref=srcref)
-			res <- res[-nf]
-			ikeys <- ikeys[-nf]
+			res[nf] <- str_c("\\cite{??", keys[nf], "??}")
+			#res[-nf] <- res[-nf]
 		}
-		x$values[ikeys] <- res
+		x$values <- res
 	}
+	x$values <- unlist(x$values)
+	#print(x$values)
 	# collapse all references
 	format_collapse(x)
 }
