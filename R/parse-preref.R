@@ -2,13 +2,25 @@
 parse.preref <- function(lines) {
   # Extract srcrefs
   srcrefs <- attr(lines, 'srcref')
-  srcrefs$lloc[1] <- srcrefs$lloc[1] + 1 
+  srcrefs$lloc[1] <- srcrefs$lloc[1] 
   
-  delimited.lines <- lines[str_detect(lines, LINE.DELIMITER)]
+  # detect roxygen documentation lines
+  i_preref <- str_detect(lines, LINE.DELIMITER)
+  delimited.lines <- lines[i_preref]
+  
+  # skip blocks with no roxygen documentation 
+  if (length(delimited.lines) == 0) return(list())
+
+  # adapt lloc to cope for empty or comment lines before the roxygen lines  
+  w <- which(i_preref)
+  srcrefs$lloc[1] <- srcrefs$lloc[1] + w[1] - 1
+
   trimmed.lines <- str_trim(str_replace(delimited.lines, LINE.DELIMITER, ""),
     "right")
 
   if (length(trimmed.lines) == 0) return(list())
+  
+  if( all(trimmed.lines == '') ) roxygen_warning("Empty documentation", srcref=srcrefs)
 
   joined.lines <- str_c(trimmed.lines, collapse = '\n')
   ## Thanks to Fegis at #regex on Freenode for the
@@ -114,7 +126,7 @@ parse.default <- function(key, rest, srcref){
 #' @keywords internal
 #' @export
 parse.unknown <- function(key, rest, srcref) {
-  roxygen_warning(key, ' is an unknown key', srcref = srcref)
+  roxygen_warning('@', key, ' is an unknown tag', srcref = srcref)
   parse.default(key, rest)
 }
 
@@ -127,7 +139,7 @@ parse.unknown <- function(key, rest, srcref) {
 #' @export
 parse.value <- function(key, rest, srcref) {
   if (is.null.string(rest))
-    roxygen_stop(key, ' requires a value', srcref = srcref)
+    roxygen_stop('@', key, ' requires a value', srcref = srcref)
   else
     parse.default(key, rest)
 }
@@ -147,11 +159,14 @@ parse.name.description <- function(key, rest, srcref) {
   rest <- str_trim(pieces[, 2])
 
   if (is.null.string(name))
-    roxygen_stop(key, ' requires a name and description', srcref = srcref)
-  else
+    roxygen_stop('@', key, ' requires a name and description', srcref = srcref)
+  else{
+	if ( is.null.string(rest) )
+		roxygen_warning('@', key, ' `', name, '` has an empty description', srcref = srcref)
     as.list(structure(list(list(name=name,
                                 description=rest)),
                       names=key))
+  }
 }
 
 #' Parse an element containing a single name and only a name.
@@ -168,9 +183,9 @@ parse.name <- function(key, name, srcref) {
   name <- str_trim(name)
   
   if (is.null.string(name)) {
-    roxygen_stop(key, ' requires a name', srcref = srcref)
+    roxygen_stop('@', key, ' requires a name', srcref = srcref)
   } else if (str_count(name, "\\s+") > 1) {
-    roxygen_warning(key, ' ignoring extra arguments', srcref = srcref)
+    roxygen_warning('@', key, ' ignoring extra arguments', srcref = srcref)
   }
     
   parse.default(key, word(name, 1))
