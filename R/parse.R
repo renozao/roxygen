@@ -18,7 +18,7 @@ parse.file <- function(file, env, env_hash) {
 
     stopifnot(length(src_parsed) == length(pre_parsed))
 
-    mapply(c, src_parsed, pre_parsed, SIMPLIFY = FALSE)    
+    mapply(c, src_parsed, pre_parsed, SIMPLIFY = FALSE)
   })
 }
 
@@ -36,13 +36,28 @@ parse.files <- function(paths) {
   env <- new.env(parent = parent.env(globalenv()))
   env_hash <- suppressWarnings(digest(env))
   
-  setPackageName("roxygen_destest", env)
+  setPackageName("roxygen_test", env)
   lapply(paths, sys.source, chdir = TRUE, envir = env)
+  on.exit(cleanup_s4(env))
   
   unlist(lapply(paths, parse.file, env = env, env_hash = env_hash), 
     recursive = FALSE)
 }
+
+
+cleanup_s4 <- function(env) {
+  classes <- getClasses(env)
+  generics <- getGenerics(env)
+
+  lapply(classes, removeClass, where = env)
+  lapply(generics@.Data, removeMethods, where = env)
   
+  pkg_gen <- generics@.Data[generics@package == "roxygen_test"]
+  lapply(pkg_gen, removeGeneric, where = env)
+  
+  invisible(TRUE)
+}
+
 #' Text-parsing hack using tempfiles for more facility.
 #'
 #' @param text stringr containing text to be parsed
