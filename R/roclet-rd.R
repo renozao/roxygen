@@ -396,6 +396,9 @@ process.usage <- function(partitum) {
   args <- usage(partitum$formals)
   if (str_detect(fun_name, fixed("<-"))) {
     fun_name <- str_replace(fun_name, fixed("<-"), "")
+	# remove argument 'value' from the argument list:
+	# correct usage specification is "fun(x, y) <- value"
+	args <- str_replace(args, ", value$", "")
     new_tag("usage", str_c(fun_name, "(", args, ") <- value"))
   } else {
     new_tag("usage", str_c(fun_name, "(", args, ")"))
@@ -535,7 +538,7 @@ process_had_tag <- function(partitum, tag, f = new_tag) {
 # warning("All roxygen elements must have name: ",
 #   partitum$srcref$filename, ":", partitum$srcref$lloc[1], ":",
 #   partitum$srcref$lloc[2], call. = FALSE)
-
+#   partitum$srcref$lloc[2], call. = FALSE)
 process.name_description <- function(partitum, tag) {
 	tags <- partitum[names(partitum) == tag]
 	if (length(tags) == 0) return()	
