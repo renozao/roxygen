@@ -164,21 +164,56 @@ test_that("setReplaceMethod for local documented generic: documentation is corre
 	
 })
 
-test_that("Method documentation has correct defaults even when generic not documented", {
-  out <- roc_proc_text(roc, "
-    #' Blah.
-    #'
-    #' @param object blah blah blah
-    setGeneric('blah', function(object){
+test_that("Method documentation has no defaults when generic NOT documented", {
+  chunk <- "
+    setGeneric('blah', function(object, ...){
       standardGeneric('blah')
     })
     #' Title.
-    setMethod('blah', 'numeric', function(object){ show(NA) })
-    ")[[2]]
-
+    setMethod('blah', 'numeric', function(object, extra){ show(NA) })
+    "
+  
+  expect_warning(out <- roc_proc_text(roc, chunk)[[1]], "can't find parent topic .*blah"
+	, info="Warning is thrown if target topic for @inheritParams is not found") 
   expect_equal(get_tag(out, "alias")$values, "blah,numeric-method")
-  expect_equal(names(get_tag(out, "arguments")$values), c("object"))
+  expect_equal(get_tag(out, "arguments")$values, NULL)
 })
+
+test_that("Method documentation of inheritParams", {
+	chunk <- "
+		#' @name blah
+		#' @rdname toto
+		myfun <- function(){}
+
+		#' A generic
+		setGeneric('blah', function(object, ...){ standardGeneric('blah') })
+
+		#' Title.
+		setMethod('blah', 'numeric', function(object, extra){ show(NA) })
+		"
+
+	expect_warning(out <- roc_proc_text(roc, chunk)[[3]], "multiple matches for parent topic .*blah"
+			, info="Warning is thrown if target topic for @inheritParams is matched multiple times") 
+	expect_equal(get_tag(out, "alias")$values, "blah,numeric-method")
+	expect_equal(get_tag(out, "arguments")$values, NULL)
+})
+
+test_that("Method documentation has correct defaults when generic is documented", {
+	out <- roc_proc_text(roc, "
+	#' Blah.
+	#'
+	#' @param object a nice blah object 
+	setGeneric('blah', function(object){
+	standardGeneric('blah')
+	})
+	#' Title.
+	setMethod('blah', 'numeric', function(object){ show(NA) })
+	")[[2]]
+	
+	expect_equal(get_tag(out, "alias")$values, "blah,numeric-method")
+	expect_equal(get_tag(out, "arguments")$values, c(object="a nice blah object"))
+})
+
 
 test_that("generic documentation generated correctly", {
   out <- roc_proc_text(roc, "
@@ -216,11 +251,18 @@ test_that("Replacement generic documentation generated correctly", {
 	expect_equal(get_tag(out, "usage")$values, "foo(object, value2) <- value"
 		, info="Usage with other argument named 'value2' is correct")
 
+   # with '...' arguments
+	out <- roc_proc_text(roc, "
+	#' My foo function.	
+	setGeneric('foo<-', function(object, ..., value){ standardGeneric('foo<-')})")[[1]]
+	expect_equal(get_tag(out, "usage")$values, "foo(object, ...) <- value"
+			, info="Usage with other argument '...' is correct")
+
 		
 })
 
 
-test_that("@usage for S4methods", {
+test_that("@usage and alias for S4methods", {
   out <- roc_proc_text(roc, "
     #' Title.
     setMethod('show', signature = c(object = 'array'), function (object) {})
@@ -229,6 +271,45 @@ test_that("@usage for S4methods", {
     "\\S4method{show}{array}(object)")
   expect_equal(get_tag(out, "alias")$values,
     c("show,array-method"))
+
+	# with arguments '...'
+	out <- roc_proc_text(roc, "
+	#' Title.
+	setMethod('summary', 'array', function (object, ...) {})
+	")[[1]]
+	expect_equal(get_tag(out, "usage")$values,
+			"\\S4method{summary}{array}(object, ...)"
+			, info="Usage is correct if argument '...'")
+	expect_equal(get_tag(out, "alias")$values,
+			c("summary,array-method"), info="Alias are correct if argument '...'")
+})
+
+test_that("S4 classes have correct aliases", {
+	
+	# check only default alias NAME-class if a function exists with same name
+	.test <- function(chunk, aliases, ...){
+		
+		chunk <- str_c("
+		#' Important class.
+		#' 
+		setClass('AAA')
+		", chunk, "\n")
+		out <- roc_proc_text(roc, chunk)[[1]]
+		
+		expect_equal(get_tag(out, "alias")$values, aliases
+				, info="Aliases are correct", ...)
+	}
+	
+	.test(""
+		, aliases=c("AAA", "AAA-class")
+		, label="No function exists with same name")
+	.test("AAA <- function(){}"
+		, aliases=c("AAA", "AAA-class")
+		, label="A standard function exists with same name")
+	.test("setGeneric('AAA', function(object) standardGenric('AAA'))"
+		, aliases=c("AAA", "AAA-class")
+		, label="An S4 generic exists with same name")
+	
 })
 
 test_that("@slot creates a new section and lists slots", {
