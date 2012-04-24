@@ -75,9 +75,16 @@ nice_name <- function(x) {
     x <- str_replace_all(x, fixed(subs[i, 1]), subs[i, 2])
   }
   x <- str_replace(x, "-+", "-")
+  # remove leading '-'
+  x <- str_replace(x, "^-", "")
+  # substitute leading '.'
+  x <- str_replace(x, "^\\.", "dot-")
   x
 }
 
+is_valid_rdname <- function(filename){
+	str_detect(basename(filename), "^[a-zA-Z][a-zA-Z0-9_.-]*")
+}
 
 roxygen_stop <- function(..., srcref = NULL) {
   stop(..., ' ', srcref_location(srcref), call. = FALSE)

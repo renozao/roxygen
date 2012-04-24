@@ -345,6 +345,11 @@ roclet_rd_one <- function(partitum, base_path) {
 
   # Work out file name and initialise Rd object
   filename <- str_c(partitum$rdname %||% nice_name(name), ".Rd")
+  # warning if invalid filename from user specification
+  if( !is.null(partitum$rdname) && !is_valid_rdname(filename) ){
+	  roxygen_warning("@rdname - Invalid filename specification"
+					  , srcref=partitum$srcref, immediate.=TRUE)
+  }
   rd <- new_rd_file()  
 
   add_tag(rd, new_tag("encoding", partitum$encoding))
@@ -399,7 +404,7 @@ roc_output.had <- function(roclet, results, base_path) {
     if (the_same(filename, contents)) return()
     
     name <- basename(filename)
-    if (!str_detect(name, "^[a-zA-Z][a-zA-Z0-9_.-]*$")) {
+    if ( !is_valid_rdname(name) ) {
       cat("Skipping invalid filename: ", name, "\n")
     } else {
       cat(sprintf('Writing %s\n', name))

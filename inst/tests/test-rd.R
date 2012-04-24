@@ -308,6 +308,19 @@ test_that("missing/empty name or description for name-description pairs produces
 		
 })
 
+test_that("tags @rdname with invalid filename throw a warning", {
+	
+	.test <- function(chunk, info){
+		expect_warning(roc_proc_text(roc, chunk)
+			, "Invalid filename specification", info=info)	
+	}
+	
+	.test("#' @rdname .Toto\n#' @name a\nNULL", "Leading dot")
+	.test("#' @rdname _Toto\n#' @name a\nNULL", "Leading '_'")
+	.test("#' @rdname -Toto\n#' @name a\nNULL", "Leading '-'")
+	
+})
+
 test_that("tags @newcommand and @renewcommand are correctly extracted and formated", {
 			
 	clear_caches()
