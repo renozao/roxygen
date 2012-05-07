@@ -5,18 +5,21 @@
 # tags, merge just combines all values, and format selects from these to 
 # display the tags in the appropriate way. 
 #
-new_tag <- function(tag, values) {
+new_tag <- function(tag, values, rdID=NULL) {
   if (is.null(values)) return()
   
   subc <- str_c(tag, "_tag")
-  list(structure(list(tag = tag, values = values), class = c(subc, "rd_tag")))
+  list(structure(list(tag = tag, values = values
+  	, rdID = rdID)
+  	, class = c(subc, "rd_tag")))
 }
 
 is.rd_tag <- function(x) inherits(x, "rd_tag")
 
 #' @S3method print rd_tag
 print.rd_tag <- function(x, ...) {
-  cat(format(x), "\n", sep='')
+  cat(format(x), "\n")
+  cat("rdID(s):", toString(x$rdID), "\n")
 }
 
 # Translate a tag and values into an Rd expression; multiple values get their
@@ -38,7 +41,7 @@ format.rd_tag <- function(x, ...) stop("Unimplemented format")
 #' @S3method merge rd_tag
 merge.rd_tag <- function(x, y, ...) {
   stopifnot(identical(class(x), class(y)))  
-  new_tag(x$tag, c(x$values, y$values))
+  new_tag(x$tag, c(x$values, y$values), c(x$rdID, y$rdID))
 }
 
 # Tags that repeat multiple times --------------------------------------------
@@ -158,10 +161,7 @@ format.arguments_tag <- function(x, ...) {
 format.slot_tag <- function(x, ...) {
   names <- names(x$values)
   items <- str_c("\\item{", names, "}{", x$values, "}", collapse = "\n\n")
-  str_c("\\section{Slots}\n\n",
-    "\\itemize{\n", 
-    str_wrap(items, width = 60, exdent = 2, indent = 2),
-    "\n}\n")
+  format(process.section("section", str_c("Slots:\\describe{\n\n", items, "\n\n}\n"))[[1]])
 }
 
 
@@ -203,7 +203,7 @@ format.S4method_tag <- function(x, ...) {
 	
 	.local <- function(x, fname=NULL){
 		value <- sapply(x$values, function(x){
-			desc <- str_c(unlist(x$introduction), collapse="\n\n")
+			desc <- str_c(c(unlist(x$introduction), unlist(x$links)), collapse="\n\n")
 			str_c("\n\\item{\\code{signature(", str_c(x$signature, collapse=", "),")}}{\n",desc,"\n}")
 		})
 		value <- str_c(value, collapse="\n")
