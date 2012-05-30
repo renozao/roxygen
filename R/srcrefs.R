@@ -31,16 +31,17 @@ parse_class <- function(call, env) {
 
   # class?classRepresentation
   # Default @name should be CLASSNAME-class and not CLASSNAME, as it can clash 
-  # with a function with te same name (e.g. a constructor function), which 
+  # with a function with the same name (e.g. a constructor function), which 
   # must have this @name.
   # This is achieved via $src_topic which takes precedence over $src_name for default 
   # @name ($src_name is used in several places as the R access name for the class)
-  # Access via ?CLASSNAME is ensured by appropriate default @alias.
+  # It is safer not to add the alias CLASSNAME because it may clash with a 
+  # -- constructor -- function and other topics (e.g. the package main man page).
   topic <- topic_name(class)
   list(
     src_type = "class",
     src_name = name, 
-    src_alias = c(name, topic),
+    src_alias = topic,
 	src_topic = topic,
     extends = showExtends(class@contains, printTo = FALSE),
     slots = class@slots
@@ -137,7 +138,10 @@ extractLocalFun <- function(f){
 # Works for methods that are created (setMethod) as a wrapper function to an 
 # internal function named .local
 #
-allFormals <- function(f){
+# NB: by default do not use default values for dispatched arguments because 
+# this throws a warning at check time.
+#
+allFormals <- function(f, use.defaults=FALSE){
 	
 	# look inside method for S4 methods
 	if( is(f, 'MethodDefinition') ){
@@ -151,13 +155,15 @@ allFormals <- function(f){
 		res <- formals(lfun)
 		# set default values from the generic, only for arguments that have no 
 		# default values in the method
-		generic_args <- formals(f)
-		meth_no_default <- sapply(res, is.symbol) 
-		gen_no_default <- sapply(generic_args, is.symbol)
-		generic_args <- generic_args[ !gen_no_default ]
-		generic_args <- generic_args[ names(generic_args) %in% names(res[meth_no_default]) ]
-		if( length(generic_args) ){
-			res[names(generic_args)] <- generic_args
+		if( use.defaults ){
+			generic_args <- formals(f)
+			meth_no_default <- sapply(res, is.symbol) 
+			gen_no_default <- sapply(generic_args, is.symbol)
+			generic_args <- generic_args[ !gen_no_default ]
+			generic_args <- generic_args[ names(generic_args) %in% names(res[meth_no_default]) ]
+			if( length(generic_args) ){
+				res[names(generic_args)] <- generic_args
+			}
 		}
 		# return complete list of arguments
 		res
