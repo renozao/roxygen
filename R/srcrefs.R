@@ -138,7 +138,10 @@ extractLocalFun <- function(f){
 # Works for methods that are created (setMethod) as a wrapper function to an 
 # internal function named .local
 #
-allFormals <- function(f){
+# NB: by default do not use default values for dispatched arguments because 
+# this throws a warning at check time.
+#
+allFormals <- function(f, use.defaults=FALSE){
 	
 	# look inside method for S4 methods
 	if( is(f, 'MethodDefinition') ){
@@ -152,13 +155,15 @@ allFormals <- function(f){
 		res <- formals(lfun)
 		# set default values from the generic, only for arguments that have no 
 		# default values in the method
-		generic_args <- formals(f)
-		meth_no_default <- sapply(res, is.symbol) 
-		gen_no_default <- sapply(generic_args, is.symbol)
-		generic_args <- generic_args[ !gen_no_default ]
-		generic_args <- generic_args[ names(generic_args) %in% names(res[meth_no_default]) ]
-		if( length(generic_args) ){
-			res[names(generic_args)] <- generic_args
+		if( use.defaults ){
+			generic_args <- formals(f)
+			meth_no_default <- sapply(res, is.symbol) 
+			gen_no_default <- sapply(generic_args, is.symbol)
+			generic_args <- generic_args[ !gen_no_default ]
+			generic_args <- generic_args[ names(generic_args) %in% names(res[meth_no_default]) ]
+			if( length(generic_args) ){
+				res[names(generic_args)] <- generic_args
+			}
 		}
 		# return complete list of arguments
 		res
