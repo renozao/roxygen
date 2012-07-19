@@ -22,6 +22,38 @@ parse.file <- function(file, env, env_hash) {
   })
 }
 
+# globally cached current package name used to create the package environment
+# and to determine if S4 definitions should be looked within the package 
+roxygen_pkgname <- local({
+	.local <- NULL
+	function(value){
+		if( missing(value) ) .local
+		else{
+			old <- .local
+			.local <<- value
+			old
+		}
+	}
+})
+
+# setup proper package namespace (as in devtools)
+roxygen_pkgenv <- function(env, pkg, default){
+	
+    if( !is.null(pkg) ){
+  		name <- str_c('package:', pkg)
+  		if (!is.loaded(pkg)) {
+        	attach(env, name = name)
+  		}
+  		env <- as.environment(name)
+    }
+    else{
+		roxygen_pkgname(default)
+    	setPackageName(default, env)
+    }
+	# return environment
+	env
+}
+
 #' Parse many files at once.
 #'
 #' @param \dots files to be parsed
@@ -36,7 +68,9 @@ parse.files <- function(paths) {
   env <- new.env(parent = parent.env(globalenv()))
   env_hash <- suppressWarnings(digest(env))
   
-  setPackageName("roxygen_test", env)
+  # setup proper package namespace (as in devtools)
+  env <- roxygen_pkgenv(env, roxygen_pkgname(), 'roxygen_test')
+
   lapply(paths, sys.source, chdir = TRUE, envir = env)
   on.exit(cleanup_s4(env))
   
@@ -52,7 +86,7 @@ cleanup_s4 <- function(env) {
   lapply(classes, removeClass, where = env)
   lapply(generics@.Data, removeMethods, where = env)
   
-  pkg_gen <- generics@.Data[generics@package == "roxygen_test"]
+  pkg_gen <- generics@.Data[generics@package == roxygen_pkgname()]
   lapply(pkg_gen, removeGeneric, where = env)
   
   invisible(TRUE)

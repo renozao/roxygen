@@ -74,7 +74,7 @@ parse_method <- function(call, env, replace=FALSE) {
   
   f <- getMethod(name, sig, where = env)
   pkg <- attr(f@generic, "package")
-  if (pkg == "roxygen_test") {
+  if (pkg == roxygen_pkgname()) {
 	# inherit from the generic defined within the package
 	# which is uniquely identified by its topic_name
     inherit <- topic_name(getGeneric(f@generic, where = env))
