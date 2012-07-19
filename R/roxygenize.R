@@ -1,16 +1,4 @@
 
-# Get/Set global variables accessible during all the roxygenation process.
-# e.g. package.dir
-roxygenGlobal <- local({
-	.vars <- list()
-	function(name, value, clear=FALSE){
-		if( clear ){ .vars <<- list(); return()} 
-		if( missing(name) ) .vars
-		else if( missing(value) ) .vars[[name]]
-		else .vars[[name]] <<- value
-	}
-})
-
 #' Process a package with the Rd, namespace and collate roclets.
 #'
 #' This is the workhorse function that uses roclets, the built-in document
@@ -51,11 +39,16 @@ roxygenize <- function(package.dir,
   roxygen.dir <- normalizePath(roxygen.dir)
   r_files <- dir(file.path(roxygen.dir, "R"), "[.Rr]$", full.names = TRUE)
 
+  # reset package name
+  roxygen_pkgname(NULL)
+
   # If description present, use Collate to order the files 
   # (but still include them all, and silently remove missing)
   DESCRIPTION <- file.path(package.dir, "DESCRIPTION")
   if (file.exists(DESCRIPTION)) {
     desc <- read.description(DESCRIPTION)
+	# use true package name
+	roxygen_pkgname(desc$Package) 
     raw_collate <- desc$Collate %||% ""
     con <- textConnection(raw_collate)
     on.exit(close(con))
