@@ -39,7 +39,7 @@ parse.preref <- function(lines) {
 } 
 
 # Sequence that distinguishes roxygen comment from normal comment.
-LINE.DELIMITER <- '\\s*#+\' ?'
+LINE.DELIMITER <- '^\\s*#+\' ?'
 
 # Comment blocks (possibly null) that precede a file's expressions.
 #
