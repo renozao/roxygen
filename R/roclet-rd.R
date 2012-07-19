@@ -528,7 +528,7 @@ process.usage <- function(partitum) {
   }
 
   if (type == "method") {
-    signature <- str_c(partitum$signature, collapse = ",")
+    signature <- str_c(partitum$src_usage, collapse = ",")
     fun_name <- str_c("\\S4method{", partitum$generic, "}{", signature, "}")
   } else {
     if (is.null(partitum$method)) {
