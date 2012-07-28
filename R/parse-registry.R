@@ -5,6 +5,34 @@ if (!exists("preref.parsers")) {
   srcref.parsers <- new.env(parent=emptyenv())
 }
 
+find_target <- function(target, registry, error=TRUE, regname=NULL){
+	if( !is.character(target) ) return( target )
+	
+	track <- NULL
+	ctarget <- target
+	while( is.character(end <- registry[[ctarget]]) ){
+		# update backtrack
+		track <- c(track, ctarget)
+		# check not already visited
+		if( end %in% track ){
+			stop("Circular refrence for target '", target, "'",
+				if( !is.null(regname) ) paste('in', regname), 
+				': ', str_c(track, collapse=' -> '))
+		}
+		# follow alias
+		ctarget <- end
+	}
+	# check if really found
+	if( is.null(end) ){
+		if( error ){
+			stop("Target '", target, "' does not exist",
+					if( !is.null(regname) ) paste('in', regname), 
+					'.')
+		}else return( NULL )
+	}
+	end
+}
+
 #' Register parsers.
 #'
 #' @param key the key upon which to register
@@ -18,8 +46,11 @@ register.preref.parser <- function(key, parser) {
   
   # verbose message when reading profile
   if( isLoadingProfile() ){
+	  # resolve alias
 	  action <- if( !is.null(preref.parsers[[key]]) ) "Redefining" else "Registering" 
-	  message("  ", action, " preref parser '", key,"'")
+	  message("  ", action, " preref parser '", key,"'", 
+			  if( is.character(parser) ) str_c(" -> '", parser, "'") )
+	  parser <- find_target(parser, preref.parsers)
   }
   
   preref.parsers[[key]] <- parser
@@ -33,6 +64,7 @@ register.srcref.parser <- function(key, parser) {
   if( isLoadingProfile() ){
     action <- if( !is.null(preref.parsers[[key]]) ) "Redefining" else "Registering" 
     message("  ", action, " srcref parser '", key,"'")
+	parser <- find_target(parser, srcref.parsers)
   }
   
   srcref.parsers[[key]] <- parser
