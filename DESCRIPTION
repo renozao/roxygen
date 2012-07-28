@@ -26,6 +26,7 @@ Collate:
     'parse-registry.R'
     'parse-srcref.R'
     'parse.R'
+    'settings.R'
     'rd-file-api.R'
     'rd-parse.R'
     'rd-tag-api.R'

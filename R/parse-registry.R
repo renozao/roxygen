@@ -45,3 +45,27 @@ register.srcref.parsers <- function(parser, ...) {
     register.srcref.parser(key, parser)
   }
 }
+
+#' \code{store.parser.registry} backup/restore the parser registries
+#' as/from a list.
+#' 
+#' @param registry list of parser registries to restore
+#'   
+#' @export
+#' @rdname register-parsers
+parser.registry <- function(registry){
+	
+	# return the registries as a list of lists
+	if( missing(registry) ){
+		l <- list(preref.parsers = as.list(preref.parsers)
+				, srcref.parsers = as.list(srcref.parsers)
+			)
+		return(l)
+	}	
+	
+	stopifnot( is.list(registry) )
+	# set the registry
+	sapply(names(registry), function(reg){
+		assign(reg, list2env(registry[[reg]], parent=emptyenv()), envir=topenv())
+	})
+}

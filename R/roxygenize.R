@@ -14,6 +14,10 @@
 #' @param overwrite overwrite target files?
 #' @param unlink.target unlink target directory before processing files?
 #' @param roclets character vector of roclet names to apply to package
+#' @param vanilla a logical that indicates if the package's roxygen 
+#' profile should be ignored (\code{TRUE}), or loaded before executing 
+#' any roxygen task.
+#' 
 #' @return \code{NULL}
 #' @rdname roxygenize
 #' @export
@@ -22,7 +26,8 @@ roxygenize <- function(package.dir,
                        copy.package=package.dir != roxygen.dir,
                        overwrite=TRUE,
                        unlink.target=FALSE,
-                       roclets=c("collate", "namespace", "rd")) {
+                       roclets=c("collate", "namespace", "rd"),
+			   		   vanilla=FALSE) {
 
   skeleton <- c(roxygen.dir, file.path(roxygen.dir, "man"))
 
@@ -37,6 +42,14 @@ roxygenize <- function(package.dir,
 
   roxygen.dir <- normalizePath(roxygen.dir)
   r_files <- dir(file.path(roxygen.dir, "R"), "[.Rr]$", full.names = TRUE)
+  
+  # load package-specific roxygen configuration
+  if( !vanilla && file.exists(profile <- roxygen_profile(package.dir)) ){
+	# backup/restore vanilla registry
+	regs <- parser.registry()
+	on.exit( parser.registry(regs) )
+  	load_roxygen_profile(profile)
+  }
 
   # If description present, use Collate to order the files 
   # (but still include them all, and silently remove missing)
