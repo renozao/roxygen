@@ -74,7 +74,7 @@ parse_method <- function(call, env, replace=FALSE) {
   
   f <- getMethod(name, sig, where = env)
   pkg <- attr(f@generic, "package")
-  if (pkg == "roxygen_test") {
+  if (pkg == roxygen_pkgname()) {
 	# inherit from the generic defined within the package
 	# which is uniquely identified by its topic_name
     inherit <- topic_name(getGeneric(f@generic, where = env))
@@ -84,6 +84,7 @@ parse_method <- function(call, env, replace=FALSE) {
 
   args <- allFormals(f)
   gargs <- formals(args(f))
+  sig <- method_signature(f)
   # class?MethodDefinition
   list(
 	src_s4 = TRUE,
@@ -94,7 +95,8 @@ parse_method <- function(call, env, replace=FALSE) {
     formals = args,
 	# describe within generic if the method has no extra arguments
 	src_inline = identical(args[names(args) != '...'], gargs[names(gargs) != '...']),
-    signature = method_signature(f),
+    signature = sig,
+	src_usage = sig, # trim signature in default usage 
     inheritParams = inherit
 	, keywords = 'methods'
   )
@@ -179,6 +181,13 @@ register.srcref.parser('setGeneric', parse_generic)
 register.srcref.parser('setMethod', parse_method)
 register.srcref.parser('setReplaceMethod', function(...) parse_method(..., replace=TRUE))
 
+
+trim_method_signature <- function(sig, generic){
+	# fixup for primitive functions
+	if( is.primitive(getFunction(generic, mustFind=FALSE)) )
+		sig <- sig[1L]
+	sig
+}
 # Computes S4 Method Signatures
 # 
 # This function corrects the issue with generic defined within the package, for which
@@ -186,7 +195,7 @@ register.srcref.parser('setReplaceMethod', function(...) parse_method(..., repla
 # signature as objects of implicit class 'ANY'.
 # Arguments '...' are also correctly _not_ taken into account for the signature
 #
-method_signature <- function(x){
+method_signature <- function(x, trim=FALSE){
 	# check for the case where not all arguments get tagged as class 'ANY'
 	sig <- as.character(x@defined)
 	if( is.function(x@.Data) && length(args <- formalArgs(x@.Data)) != length(sig) ){
@@ -204,8 +213,12 @@ method_signature <- function(x){
 		}else if( l < 0L )
 			warning("roxygen::topic_name - Unexpectedly unable to infer signature for method "
 					, x@generic, ",", sig, call.=FALSE, immediate.=TRUE)
-		names(sig) <- args 
 	}
+	names(sig) <- args
+	
+	# fixup if needed
+	if( trim ) sig <- trim_method_signature(sig, x@generic)
+	
 	sig
 }
 
@@ -216,7 +229,7 @@ setMethod("topic_name", signature(x = "classRepresentation"), function(x) {
   str_c(x@className, "-class")
 })
 setMethod("topic_name", signature(x = "MethodDefinition"), function(x) {
-  str_c(str_c(c(x@generic, method_signature(x)), collapse = ","), "-method")
+  str_c(str_c(c(x@generic, method_signature(x, trim=FALSE)), collapse = ","), "-method")
 })
 setMethod("topic_name", signature(x = "standardGeneric"), function(x) {
   x@generic

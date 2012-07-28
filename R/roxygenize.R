@@ -1,16 +1,4 @@
 
-# Get/Set global variables accessible during all the roxygenation process.
-# e.g. package.dir
-roxygenGlobal <- local({
-	.vars <- list()
-	function(name, value, clear=FALSE){
-		if( clear ){ .vars <<- list(); return()} 
-		if( missing(name) ) .vars
-		else if( missing(value) ) .vars[[name]]
-		else .vars[[name]] <<- value
-	}
-})
-
 #' Process a package with the Rd, namespace and collate roclets.
 #'
 #' This is the workhorse function that uses roclets, the built-in document
@@ -27,6 +15,10 @@ roxygenGlobal <- local({
 #' @param overwrite overwrite target files?
 #' @param unlink.target unlink target directory before processing files?
 #' @param roclets character vector of roclet names to apply to package
+#' @param vanilla a logical that indicates if the package's roxygen 
+#' profile should be ignored (\code{TRUE}), or loaded before executing 
+#' any roxygen task.
+#' 
 #' @return \code{NULL}
 #' @rdname roxygenize
 #' @export
@@ -35,9 +27,10 @@ roxygenize <- function(package.dir,
                        copy.package=package.dir != roxygen.dir,
                        overwrite=TRUE,
                        unlink.target=FALSE,
-                       roclets=c("collate", "namespace", "bibliography", "rd")) {
-  
-  skeleton <- c(roxygen.dir, file.path(roxygen.dir, c("man", "inst")))
+                       roclets=c("collate", "namespace", "bibliography", "rd"), 
+			   		   vanilla=NA) {
+
+  skeleton <- c(roxygen.dir, file.path(roxygen.dir, "man"))
 
   if (copy.package) {
     copy.dir(package.dir, roxygen.dir, unlink.target = unlink.target,
@@ -50,12 +43,23 @@ roxygenize <- function(package.dir,
 
   roxygen.dir <- normalizePath(roxygen.dir)
   r_files <- dir(file.path(roxygen.dir, "R"), "[.Rr]$", full.names = TRUE)
+  
+  # load roxygen configuration profile
+  oldregs <- parser.registry()
+  if( load_roxygen_profile(package.dir, vanilla) ){
+  	on.exit( parser.registry(oldregs) )
+  }
+
+  # reset package name
+  roxygen_pkgname(NULL)
 
   # If description present, use Collate to order the files 
   # (but still include them all, and silently remove missing)
   DESCRIPTION <- file.path(package.dir, "DESCRIPTION")
   if (file.exists(DESCRIPTION)) {
     desc <- read.description(DESCRIPTION)
+	# use true package name
+	roxygen_pkgname(desc$Package) 
     raw_collate <- desc$Collate %||% ""
     con <- textConnection(raw_collate)
     on.exit(close(con))
