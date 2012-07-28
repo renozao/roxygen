@@ -63,7 +63,8 @@ register.srcref.parser <- function(key, parser) {
   # verbose message when reading profile
   if( isLoadingProfile() ){
     action <- if( !is.null(preref.parsers[[key]]) ) "Redefining" else "Registering" 
-    message("  ", action, " srcref parser '", key,"'")
+	message("  ", action, " srcref parser '", key,"'", 
+			if( is.character(parser) ) str_c(" -> '", parser, "'") )
 	parser <- find_target(parser, srcref.parsers)
   }
   
