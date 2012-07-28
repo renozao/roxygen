@@ -27,7 +27,7 @@ roxygenize <- function(package.dir,
                        overwrite=TRUE,
                        unlink.target=FALSE,
                        roclets=c("collate", "namespace", "rd"),
-			   		   vanilla=FALSE) {
+			   		   vanilla=NA) {
 
   skeleton <- c(roxygen.dir, file.path(roxygen.dir, "man"))
 
@@ -43,12 +43,10 @@ roxygenize <- function(package.dir,
   roxygen.dir <- normalizePath(roxygen.dir)
   r_files <- dir(file.path(roxygen.dir, "R"), "[.Rr]$", full.names = TRUE)
   
-  # load package-specific roxygen configuration
-  if( !vanilla && file.exists(profile <- roxygen_profile(package.dir)) ){
-	# backup/restore vanilla registry
-	regs <- parser.registry()
-	on.exit( parser.registry(regs) )
-  	load_roxygen_profile(profile)
+  # load roxygen configuration profile
+  oldregs <- parser.registry()
+  if( load_roxygen_profile(package.dir, vanilla) ){
+  	on.exit( parser.registry(oldregs) )
   }
 
   # If description present, use Collate to order the files 
