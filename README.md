@@ -13,7 +13,19 @@ mySetClass(Class, ...){
 in `man-roxygen/profile`:
 
 ```
-# register parser for mySetClass
-register.srcref.parser('mySetClass', roxygen2:::parse_class)
+# register parser for `mySetClass` statements as an alias to the default one defined for `setClass` statements
+register.srcref.parser('mySetClass', 'setClass')
+register.srcref.parser('myOtherGenerator', function(call, env){ 
+	# init result list
+	res <- list()
+
+	# fill res with default roxygen tags
+	# e.g.,:
+	res$name <- 'blabla'
+	res$slot <- 'One common slot'
+
+	# return res
+	res
+})
 ```
 
