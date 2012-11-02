@@ -946,7 +946,7 @@ process.demo <- function(tag, param, base_path, filename) {
 	if( nchar(demo[1L]) ){
 		res$desc <- demo[1L]
 	}
-	if( nchar(demo[2L]) ){
+	if( length(demo) > 1L ){
 		# store R code
 		res$code <- str_trim(str_c(demo[-1L], collapse="\n"))
 	}

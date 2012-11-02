@@ -245,11 +245,11 @@ format.demo_tag <- function(x, ...){
 	# stick code together
 	code <- vapply(x$values, "[[", "code", FUN.VALUE = character(1))
 	code <- code[!is.na(code)]
-	if( !length(code) ){
+	code <- paste(code, collapse = "\n\n")
+	if( !nchar(code) ){
 		roxygen_warning("Demo '", basename(filename),":", title, "' is empty.")
 		return()
 	}
-	code <- str_c(code, collapse = "\n\n")
 	
 	# create demo directory if nor present
 	demodir <- normalizePath(dirname(filename), mustWork=FALSE)
