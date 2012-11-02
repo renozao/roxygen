@@ -66,6 +66,16 @@ prerefs <- function(srcfile, srcrefs) {
   Map(extract, comments_start, comments_end)
 }
 
+
+funcmp <- function(x, y, defonly=FALSE){
+	if( defonly ){
+		attributes(x) <- NULL
+		attributes(body(x)) <- NULL
+		attributes(y) <- NULL
+		attributes(body(y)) <- NULL
+	}
+	identical(digest(x), digest(y))
+}
 # Parse a raw string containing key and expressions.
 #
 # @param element the string containing key and expressions
@@ -77,6 +87,15 @@ parse.element <- function(element, srcref) {
   rest <- pieces[, 2]
   
   tag_parser <- preref.parsers[[tag]] %||% parse.unknown 
+  # special processing for raw parsers 
+  if( funcmp(tag_parser, parse.raw, defonly=TRUE) ){
+	  # split the tag line from the rest
+	  tagline <- str_split(element, "\n")[[1]][1L]
+	  # add empty line if no argument is present
+	  if( str_trim(tagline) == tag ){
+	  	rest <- str_c("\n", rest)
+	}
+  }
   tag_parser(tag, rest, srcref)
 }
 
@@ -200,3 +219,14 @@ parse.name <- function(key, name, srcref) {
 #' @export
 parse.toggle <- function(key, rest, srcref)
   as.list(structure(TRUE, names=key))
+
+#' Parse raw content of tag
+#'
+#' @inheritParams parse.default
+#' @return The raw content of the tag
+#' @family preref parsing functions
+#' @keywords internal
+#' @export
+parse.raw <- function(key, rest, srcref){
+	as.list(structure(rest, names=key))
+}

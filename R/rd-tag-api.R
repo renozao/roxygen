@@ -229,3 +229,52 @@ format.S4method_tag <- function(x, ...) {
 	if( nchar(res) == 0L ) return()
 	format(process.section("section", str_c("Methods:\\describe{\n", res, "\n\n}\n"))[[1]])
 }
+
+#' @S3method format demo_tag
+format.demo_tag <- function(x, ...){
+	
+	if( !length(x$values) ) return()
+	
+	filename <- x$values[[1]]$filename
+	
+	# determine title
+	desc <- vapply(x$values, "[[", "desc", FUN.VALUE = character(1))
+	desc <- desc[!is.na(desc)]
+	title <- if( length(desc) ) desc[1L] else sub("\\.R$", "", basename(filename))  
+	
+	# stick code together
+	code <- vapply(x$values, "[[", "code", FUN.VALUE = character(1))
+	code <- code[!is.na(code)]
+	if( !length(code) ){
+		roxygen_warning("Demo '", basename(filename),":", title, "' is empty.")
+		return()
+	}
+	code <- str_c(code, collapse = "\n\n")
+	
+	# create demo directory if nor present
+	demodir <- normalizePath(dirname(filename), mustWork=FALSE)
+	if( !file.exists(demodir) ){
+		dir.create(demodir)
+	}
+	# (re)-write demo file
+	message("Writing demo file '", filename, "' ... ", appendLF=FALSE)
+	write(code, file=filename)
+	# load demo index file
+	dIndex <- file.path(demodir, '00Index')
+	idx <- matrix(character(), 0L, 2L)
+	if( file.exists(dIndex) ){
+		idx <- readLines(dIndex)
+		idx <- str_split_fixed(idx, " ", 2)
+	}
+	basefile <- basename(filename)
+	demoline <- c(basefile, title)
+	ifile <- which(idx[,1] == basefile)
+	if( !length(ifile) ) idx <- rbind(idx, demoline) 
+	else idx[ifile, ] <- demoline
+	dimnames(idx) <- NULL
+	# write demo index
+	write(t(idx), ncolumns=2, file=dIndex)
+	message('OK')
+	# return nothing
+	return()
+}

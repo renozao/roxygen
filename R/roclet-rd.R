@@ -41,6 +41,9 @@ register.preref.parsers(parse.default,
 
 register.preref.parsers(parse.toggle,
 						'inline')
+				
+register.preref.parsers(parse.raw,
+						'demo')
 
 #' Roclet: make Rd files.
 #'
@@ -463,6 +466,7 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, process.name_description(partitum, 'newcommand'))
   add_tag(rd, process.name_description(partitum, 'renewcommand'))
   add_tag(rd, process.examples(partitum, base_path))
+  add_tag(rd, process_had_tag(partitum, 'demo', process.demo, base_path=base_path, filename=filename))
 
   list(rd = rd, filename = filename
   		, rdID=rdID, srcref=partitum$srcref)
@@ -911,11 +915,11 @@ process.docType <- function(partitum) {
   tags
 }
 
-process_had_tag <- function(partitum, tag, f = new_tag) {
+process_had_tag <- function(partitum, tag, f = new_tag, ...) {
   matches <- partitum[names(partitum) == tag]
   if (length(matches) == 0) return()
 
-  unlist(lapply(matches, function(p) f(tag, p)), recursive = FALSE)
+  unlist(lapply(matches, function(p, ...) f(tag, p, ...), ...), recursive = FALSE)
 }
 
 # warning("All roxygen elements must have name: ",
@@ -931,3 +935,21 @@ process.name_description <- function(partitum, tag) {
 	
 	new_tag(tag, desc)
 }
+
+
+process.demo <- function(tag, param, base_path, filename) {
+	
+	res <- as.list(c(filename=file.path(base_path, 'demo', sub("\\.Rd$", ".R", filename)), desc=NA, code=NA))
+	demo <- str_trim(str_split(param, "\n")[[1]])
+	
+	# store long name
+	if( nchar(demo[1L]) ){
+		res$desc <- demo[1L]
+	}
+	if( nchar(demo[2L]) ){
+		# store R code
+		res$code <- str_trim(str_c(demo[-1L], collapse="\n"))
+	}
+	new_tag(tag, list(res))
+}
+

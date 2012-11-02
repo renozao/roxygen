@@ -22,7 +22,7 @@ format.rd_file <- function(x, ...) {
   order <- c("docType", "encoding", "name", "alias", "title", "format",
     "source", "usage", "arguments", "value", "description", "details", "slot",
     "note", "S4method", "section", "examples", "author", "references", "seealso",
-    "concept", "keyword")
+    "concept", "keyword", 'demo')
     
   tags <- tags[intersect(order, names(tags))]
   
