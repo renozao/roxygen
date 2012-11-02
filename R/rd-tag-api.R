@@ -266,7 +266,7 @@ format.demo_tag <- function(x, ...){
 	idx <- matrix(character(), 0L, 2L)
 	if( file.exists(dIndex) ){
 		idx <- readLines(dIndex)
-		idx <- str_split_fixed(idx, " ", 2)
+		idx <- str_split_fixed(idx, "\t", 2)
 	}
 	demoline <- c(demoname, title)
 	ifile <- which(idx[,1] == demoname)
@@ -274,7 +274,7 @@ format.demo_tag <- function(x, ...){
 	else idx[ifile, ] <- demoline
 	dimnames(idx) <- NULL
 	# write demo index
-	write(t(idx), ncolumns=2, file=dIndex)
+	write.table(idx, file=dIndex, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
 	message('OK [', nrow(idx), ' demo(s)]')
 	# return nothing
 	return()

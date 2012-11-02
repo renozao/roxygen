@@ -49,7 +49,7 @@ d <- function(x){}
 	idxfile <- file.path(demodir, '00Index')
 	expect_true(file.exists(idxfile), "Index file is created")
 	l <- readLines(idxfile)
-	expect_identical(paste(l, collapse="\n"), "a.R This is a demo\nd.R This is another demo", "Content of Index file is correct")
+	expect_identical(paste(l, collapse="\n"), "a\tThis is a demo\nd\tThis is another demo", "Content of Index file is correct")
 	# check demo files
 	df <- file.path(demodir, 'a.R')
 	expect_true(file.exists(df), "First demo file is created")
