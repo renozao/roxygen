@@ -236,18 +236,19 @@ format.demo_tag <- function(x, ...){
 	if( !length(x$values) ) return()
 	
 	filename <- x$values[[1]]$filename
+	demoname <- basename(filename)
 	
 	# determine title
 	desc <- vapply(x$values, "[[", "desc", FUN.VALUE = character(1))
 	desc <- desc[!is.na(desc)]
-	title <- if( length(desc) ) desc[1L] else sub("\\.R$", "", basename(filename))  
+	title <- if( length(desc) ) desc[1L] else demoname  
 	
 	# stick code together
 	code <- vapply(x$values, "[[", "code", FUN.VALUE = character(1))
 	code <- code[!is.na(code)]
 	code <- paste(code, collapse = "\n\n")
 	if( !nchar(code) ){
-		roxygen_warning("Demo '", basename(filename),":", title, "' is empty.")
+		roxygen_warning("Demo '", demoname,":", title, "' is empty.")
 		return()
 	}
 	
@@ -257,6 +258,7 @@ format.demo_tag <- function(x, ...){
 		dir.create(demodir)
 	}
 	# (re)-write demo file
+	filename <- str_c(filename, ".R")
 	message("Writing demo file '", filename, "' ... ", appendLF=FALSE)
 	write(code, file=filename)
 	# load demo index file
@@ -266,15 +268,14 @@ format.demo_tag <- function(x, ...){
 		idx <- readLines(dIndex)
 		idx <- str_split_fixed(idx, " ", 2)
 	}
-	basefile <- basename(filename)
-	demoline <- c(basefile, title)
-	ifile <- which(idx[,1] == basefile)
+	demoline <- c(demoname, title)
+	ifile <- which(idx[,1] == demoname)
 	if( !length(ifile) ) idx <- rbind(idx, demoline) 
 	else idx[ifile, ] <- demoline
 	dimnames(idx) <- NULL
 	# write demo index
 	write(t(idx), ncolumns=2, file=dIndex)
-	message('OK')
+	message('OK [', nrow(idx), ' demo(s)]')
 	# return nothing
 	return()
 }

@@ -939,7 +939,7 @@ process.name_description <- function(partitum, tag) {
 
 process.demo <- function(tag, param, base_path, filename) {
 	
-	res <- as.list(c(filename=file.path(base_path, 'demo', sub("\\.Rd$", ".R", filename)), desc=NA, code=NA))
+	res <- as.list(c(filename=file.path(base_path, 'demo', sub("\\.Rd$", "", filename)), desc=NA, code=NA))
 	demo <- str_trim(str_split(param, "\n")[[1]])
 	
 	# store long name
