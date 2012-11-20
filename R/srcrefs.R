@@ -208,13 +208,14 @@ method_signature <- function(x, trim=FALSE){
 		# first one are 'ANY'
 		if( l == length(args) - 1L )
 			args <- args[1L]
-		else if( l > 0L ){
+		else if( l > 0L && !grepl('<-$', x@generic) ){
 			sig <- c(sig, rep('ANY', l))
 		}else if( l < 0L )
 			warning("roxygen::topic_name - Unexpectedly unable to infer signature for method "
 					, x@generic, ",", sig, call.=FALSE, immediate.=TRUE)
 	}
-	names(sig) <- args
+	if( length(sig) == length(args) )
+		names(sig) <- args
 	
 	# fixup if needed
 	if( trim ) sig <- trim_method_signature(sig, x@generic)
