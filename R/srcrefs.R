@@ -196,6 +196,12 @@ trim_method_signature <- function(sig, generic){
 # Arguments '...' are also correctly _not_ taken into account for the signature
 #
 method_signature <- function(x, trim=FALSE){
+	
+	# imported generics are correct
+	pkg <- attr(x@generic, "package")
+	if (pkg != roxygen_pkgname()){
+		return(setNames(x@defined@.Data, x@defined@names))
+	} 
 	# check for the case where not all arguments get tagged as class 'ANY'
 	sig <- as.character(x@defined)
 	if( is.function(x@.Data) && length(args <- formalArgs(x@.Data)) != length(sig) ){
