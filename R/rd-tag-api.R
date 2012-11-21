@@ -124,7 +124,7 @@ format.references_tag <- function(x, ...){
 		}
 		x$values <- res
 	}
-	x$values <- unlist(x$values)
+	x$values <- unique(unlist(x$values))
 	#print(x$values)
 	# collapse all references
 	format_collapse(x)
