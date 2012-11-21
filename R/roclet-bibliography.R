@@ -30,38 +30,44 @@ extract.cite <- function(key, str, full=FALSE){
 	# do not extract from some specific tags
 	if( key %in% c('examples') ) return()
 	
-#	if( grepl("cite", str))
-#		print(str)	
-	# check for the presence of \cite commands
-	p <- "(^|[^\\])(\\\\cite\\{([^#} ]*)\\})"  
-	cite <- str_match_all(str, p)
-	#print(cite)
-	.local <- function(cite){
-		if( length(cite) == 0L ) return(NA)
+	keys <- bibref_cache$compute(list('extract', str, full), {
+	
+	#	if( grepl("cite", str))
+	#		print(str)	
+		# check for the presence of \cite commands
+		p <- "(^|[^\\])(\\\\cite[t]?\\{([^#} ]*)\\})"  
+		cite <- str_match_all(str, p)
 		#print(cite)
-		if( !full ){
-			unlist(lapply(cite[,4], parse.cite, key='cite'))			
-		}else{
-			mapply(function(s, cmd){
-				list(keys=unlist(parse.cite(s, key='cite'))
-					, cmd=cmd, skeys=s)
-			}, cite[,4], cite[,3], SIMPLIFY=FALSE)
+		.local <- function(cite){
+			if( length(cite) == 0L ) return(NA)
+			#print(cite)
+			if( !full ){
+				unlist(lapply(cite[,4], parse.cite, key='cite'))			
+			}else{
+				mapply(function(s, cmd){
+					list(keys=unlist(parse.cite(s, key='cite'))
+						, cmd=cmd, skeys=s)
+				}, cite[,4], cite[,3], SIMPLIFY=FALSE)
+			}
 		}
-	}
-	
-	keys <- lapply(cite, .local)
-	keys <- keys[!is.na(keys)]
-	if( length(keys) == 0L ) return(NULL)
-	
-	if( !full ){
-		keys <- unique(unlist(keys))
-		keys <- as.list(setNames(keys, rep('cite', length(keys))))
-	}else{
-		# reduce or wrap if only one key
-		if( is.null(keys[[1]]$skeys) )
-			keys <- unlist(keys, recursive=FALSE)
-	}
-	
+		
+		keys <- lapply(cite, .local)
+		keys <- keys[!is.na(keys)]
+		if( length(keys) > 0L ){
+		
+			if( !full ){
+				keys <- unique(unlist(keys))
+				keys <- as.list(setNames(keys, rep('cite', length(keys))))
+			}else{
+				# reduce or wrap if only one key
+				if( is.null(keys[[1]]$skeys) ){
+					keys <- unlist(keys, recursive=FALSE)
+				}
+			}
+			keys
+		}
+	})
+
 	keys
 }
 # parser for @cite tags: separate BibTeX keys
@@ -391,24 +397,28 @@ shortcite <- function(b){
 # \cite{Toto2010} -> \cite{Toto (2010)} or \cite{Toto et al. (2010)}
 # \cite{Toto2010, Tata1989} -> \cite{Toto et al. (2010), Tata (1989)}
 format_cite <- function(str, ...){
-	cite <- extract.cite('cite', str, full=TRUE)
-	if( length(cite) > 0L ){		
-		for(ci in cite){
-			#message("#cmd=", ci$cmd)
-			#message("#str in=", str)
-			e <- sapply(ci$keys, function(x){
-				b <- getBibEntry(x, ...)
-				if( length(b) == 0L ) x else shortcite(b)
-			})
-			e <- str_c(e, collapse=", ")
-			ncmd <- gsub(ci$skeys, e, ci$cmd, fixed=TRUE)
-			ncmd <- gsub("\\", "\\\\", ncmd, fixed=TRUE)
-			#print(ncmd)
-			pa <- str_replace_all(ci$cmd, "([\\{}-])", "\\\\\\1")
-			#print(pa)
-			str <- gsub(str_c("(^|[^\\])", pa), str_c("\\1", ncmd), str)
-			#message("#str out=", str)
+	str <- bibref_cache$compute(list('format', str, ...), {
+		cite <- extract.cite('cite', str, full=TRUE)
+		if( length(cite) > 0L ){
+			for(ci in cite){
+#				message("#cmd=", ci$cmd)
+#				message("#str in=", str)
+#				str(ci)
+				e <- sapply(ci$keys, function(x){
+					b <- getBibEntry(x, ...)
+					if( length(b) == 0L ) x else shortcite(b)
+				})
+				e <- str_c(e, collapse=", ")
+				ncmd <- gsub(ci$skeys, e, ci$cmd, fixed=TRUE)
+				ncmd <- gsub("\\", "\\\\", ncmd, fixed=TRUE)
+				#print(ncmd)
+				pa <- str_replace_all(ci$cmd, "([\\{}-])", "\\\\\\1")
+				#print(pa)
+				str <- gsub(str_c("(^|[^\\])", pa), str_c("\\1", ncmd), str)
+				#message("#str out=", str)
+			}
 		}
-	}
+		str
+	})
 	str
 }
