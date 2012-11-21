@@ -259,11 +259,14 @@ roc_process.had <- function(roclet, partita, base_path) {
       
       other_topics <- sort(unlist(name_lookup[others], use.names = FALSE))
 
-      links <- paste("\\code{\\link{", other_topics, "}}", 
-        collapse =", ", sep = "")
-      seealso <- paste("Other ", family, ": ", links, sep = "")
-      
-      add_tag(topic, new_tag("seealso", seealso))
+	  # add see also links if necessary 
+	  if( length(other_topics) ){
+	      links <- paste("\\code{\\link{", other_topics, "}}", 
+	        collapse =", ", sep = "")
+	      seealso <- paste("Other ", family, ": ", links, sep = "")
+	      
+	      add_tag(topic, new_tag("seealso", seealso))
+	  }
     }
   }
   
