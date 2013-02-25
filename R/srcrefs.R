@@ -244,3 +244,6 @@ setMethod("topic_name", signature(x = "standardGeneric"), function(x) {
 setMethod("topic_name", signature(x = "nonstandardGenericFunction"), function(x) {
   x@generic
 })
+setMethod("topic_name", signature(x = "groupGenericFunction"), function(x) {
+  x@generic
+})
