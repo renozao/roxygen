@@ -56,9 +56,11 @@ roc_out <- function(roclet, input, base_path) {
 # Internal methods for processing and output
 
 roc_output <- function(roclet, results, base_path) {
+  message("Generate output for roclet '", class(roclet)[[1L]], "'")
   UseMethod("roc_output", roclet)
 }
 
 roc_process <- function(roclet, partita, base_path) {
+  message("Processing roclet '", class(roclet)[[1L]], "'")
   UseMethod("roc_process", roclet)
 }

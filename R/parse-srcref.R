@@ -19,11 +19,24 @@ parse.srcref <- function(ref, env) {
   parser <- srcref.parsers[[name]]
   if (is.null(parser)) return(srcref)
   
-  f <- eval(call[[1]], env)
+  tryCatch(f <- eval(call[[1]], env)
+	, error = function(e){
+		roxygen_stop("Error evaluating object "
+					, "\n  ", conditionMessage(e)
+					, srcref = srcref)
+	})
   # If not a primitive function, use match.call so argument handlers
   # can use argument names
   if (!is.primitive(f)) {
     call <- match.call(eval(call[[1]], env), call)
   }
-  c(srcref, parser(call, env))
+  
+  tryCatch(parsed_srcref <- parser(call, env)
+		  , error = function(e){
+			  roxygen_stop("Error parsing call "
+					  , "\n  ", conditionMessage(e) 
+					  , srcref = srcref)
+		  })
+		  
+  c(srcref, parsed_srcref)
 }

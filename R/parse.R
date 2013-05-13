@@ -74,21 +74,41 @@ parse.files <- function(paths) {
   lapply(paths, sys.source, chdir = TRUE, envir = env)
   on.exit(cleanup_s4(env))
   
-  unlist(lapply(paths, parse.file, env = env, env_hash = env_hash), 
+  message("Parsing sources ... ", appendLF=FALSE)
+  res <- unlist(lapply(paths, parse.file, env = env, env_hash = env_hash),
     recursive = FALSE)
+  message("OK")
+  res
 }
 
 
 cleanup_s4 <- function(env) {
+  message('Cleaning up S4 data ... ', appendLF=FALSE)
   classes <- getClasses(env)
   generics <- getGenerics(env)
 
-  lapply(classes, removeClass, where = env)
-  lapply(generics@.Data, removeMethods, where = env)
+  lapply(classes, function(cl, ...){
+			 cldef <- getClassDef(cl, ...)
+			 # skip Union classes as it crashes
+			 #if( is(cldef, 'ClassUnionRepresentation') ) return()
+			 err <- try( removeClass(cl, ...) )
+			 if( is(err, 'try-error') ){
+				 message("An error occurred while removing S4 class '", cl, "'")
+				 stop(err)
+			 }
+		 }, where = env)
+  lapply(generics@.Data, function(name, ...){
+		    err <- try( removeMethods(name, ...) )
+		    if( is(err, 'try-error') ){
+			    message("An error occured while removing S4 methods '", name, "'")
+			    stop(err)
+		    }
+		}
+		, where = env)
   
   pkg_gen <- generics@.Data[generics@package == roxygen_pkgname()]
   lapply(pkg_gen, removeGeneric, where = env)
-  
+  message('OK')
   invisible(TRUE)
 }
 
