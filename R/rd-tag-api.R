@@ -80,13 +80,15 @@ format.encoding_tag <- format_first
 
 # Tags collapse their values into a single string ----------------------------
 
-format_collapse <- function(x, ..., indent = 2, exdent = 2) {
+format_collapse <- function(x, ..., indent = 2, exdent = 2, cite = FALSE) {
   values <- str_c(x$values, collapse = "\n\n")
   # substitute citation keys
-  values <- format_cite(values)
+  if( cite ) values <- format_cite(values)
   rd_tag(x$tag, str_wrap(values, width = 60, indent = indent, 
     exdent = exdent), space = TRUE)
 } 
+
+format_collapse_cite <- function(...) format_collapse(..., cite = TRUE)
 #' @S3method format author_tag
 #' @S3method format concept_tag
 #' @S3method format description_tag
@@ -99,9 +101,9 @@ format_collapse <- function(x, ..., indent = 2, exdent = 2) {
 #' @S3method format value_tag
 format.author_tag <- format_collapse
 format.concept_tag <- format_collapse
-format.description_tag <- format_collapse
-format.details_tag <- format_collapse
-format.note_tag <- format_collapse
+format.description_tag <- format_collapse_cite
+format.details_tag <- format_collapse_cite
+format.note_tag <- format_collapse_cite
 
 format.references_tag <- function(x, ...){	
 	# detect citations from full references
@@ -127,7 +129,7 @@ format.references_tag <- function(x, ...){
 	x$values <- unique(unlist(x$values))
 	#print(x$values)
 	# collapse all references
-	format_collapse(x)
+	format_collapse_cite(x)
 }
 format.seealso_tag <- format_collapse
 format.source_tag <- format_collapse
@@ -184,6 +186,9 @@ format.section_tag <- function(x, ...) {
 #' @S3method format examples_tag
 format.examples_tag <- function(x, ...) {
   values <- str_c(x$values, collapse = "\n")
+  # TODO: auto-wrap with width 100 
+  # [see changes in R CMD check: http://developer.r-project.org/blosxom.cgi/R-devel/NEWS/2013/05/09#n2013-05-09]
+  #values <- formatR::tidy.source(text=values, width.cutoff = 100L)
   rd_tag(x$tag, values, space = TRUE)  
 }
 
