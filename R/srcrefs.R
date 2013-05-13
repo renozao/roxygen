@@ -48,6 +48,11 @@ parse_class <- function(call, env) {
   )
 }
 
+parse_classunion <- function(call, env){
+	list()
+}
+
+
 parse_generic <- function(call, env) {
   name <- as.character(call$name)
   f <- getGeneric(name, where = env)
@@ -177,6 +182,7 @@ allFormals <- function(f, use.defaults=FALSE){
 register.srcref.parser('<-', parse_assignment)
 register.srcref.parser('=', parse_assignment)
 register.srcref.parser('setClass', parse_class)
+register.srcref.parser('setClassUnion', parse_classunion)
 register.srcref.parser('setGeneric', parse_generic)
 register.srcref.parser('setMethod', parse_method)
 register.srcref.parser('setReplaceMethod', function(...) parse_method(..., replace=TRUE))
@@ -197,17 +203,40 @@ trim_method_signature <- function(sig, generic){
 #
 method_signature <- function(x, trim=FALSE){
 	
-	# imported generics are correct
+	# convert signature object into a character vector
+	sig <- setNames(as.character(x@defined), names(x@defined))
+	
+	# imported generics have mostly correct signatures
 	pkg <- attr(x@generic, "package")
 	if (pkg != roxygen_pkgname()){
-		return(setNames(x@defined@.Data, x@defined@names))
+		
+		res <- sig
+		if( is.function(x@.Data) && length(args <- formalArgs(x@.Data)) != length(sig) ){
+			# remove possible argument '...'
+			if( length(wdots <- which(args == '...')) ){
+				trailing <- tail(args, length(args) - wdots)
+				args <- args[-wdots]
+				trailsig <- sig[names(sig) %in% trailing]
+				# trim all arguments in signature after '...' if all ANY
+				if( length(trailsig) && all(trailsig == 'ANY') ){
+					res <- sig[!names(sig) %in% trailing]
+				}
+			}
+			
+		}else if( grepl('<-$', x@generic) ){ # remove value from signature if ANY
+			if( sig['value'] %in% 'ANY' )
+				res <- sig[!names(sig) %in% 'value']
+			
+		}
+		return(res)
 	} 
-	# check for the case where not all arguments get tagged as class 'ANY'
-	sig <- as.character(x@defined)
+	# check for the case where not all arguments get tagged as class 'ANY'	
 	if( is.function(x@.Data) && length(args <- formalArgs(x@.Data)) != length(sig) ){
 		
 		# remove possible argument '...'
-		args <- args[args != '...']
+		if( length(wdots <- which(args == '...')) ){
+			args <- args[-wdots]
+		}
 		l <- length(args) - length(sig)
 		
 		# append correct number of 'ANY', except if all arguments except the 
