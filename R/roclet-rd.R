@@ -417,6 +417,7 @@ roclet_rd_one <- function(partitum, base_path) {
   
   # Define topic unique identifier
   rdID <- partitum$src_topic %||% partitum$src_name
+  if( is.null(rdID) && identical(partitum$value, 'NULL') ) rdID <- partitum$name 
   # Figure out topic name
   name <- partitum$name %||% rdID
   if (is.null(name)) roxygen_stop("Missing name", srcref = partitum$srcref)
@@ -468,7 +469,7 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, process_had_tag(partitum, 'section', process.section))
   add_tag(rd, process.name_description(partitum, 'newcommand'))
   add_tag(rd, process.name_description(partitum, 'renewcommand'))
-  add_tag(rd, process.examples(partitum, base_path))
+  add_tag(rd, process.examples(partitum, base_path, rdID = rdID))
   add_tag(rd, process_had_tag(partitum, 'demo', process.demo, base_path=base_path, filename=filename))
 
   list(rd = rd, filename = filename
@@ -551,7 +552,7 @@ process.usage <- function(partitum) {
 	# remove argument 'value' from the argument list:
 	# correct usage specification is "fun(x, y) <- value"
 	args <- str_replace(args, ", value$", "")
-    new_tag("usage", str_c(fun_name, "(", args, ") <- value"))
+    new_tag("usage", str_c(fun_name, "(", args, ")<-value"))
   } else {
     new_tag("usage", str_c(fun_name, "(", args, ")"))
   }
@@ -862,13 +863,13 @@ process.slot <- function(partitum) {
 
 # If \code{@@examples} is provided, use that; otherwise, concatenate
 # the files pointed to by each \code{@@example}.
-process.examples <- function(partitum, base_path) {
+process.examples <- function(partitum, base_path, ...) {
   out <- list()
   if (!is.null(partitum$examples)) {      
     ex <- partitum$examples
     ex <- gsub("([%\\])", "\\\\\\1", ex)
     ex <- gsub("\\\\dont", "\\dont", ex)
-    out <- c(out, new_tag("examples", ex))
+    out <- c(out, new_tag("examples", ex, ...))
   } 
   
   paths <- unlist(partitum[names(partitum) == "example"])
@@ -877,7 +878,7 @@ process.examples <- function(partitum, base_path) {
     examples <- unlist(lapply(paths, readLines))
     examples <- gsub("([%\\])", "\\\\\\1", examples)                        
     
-    out <- c(out, new_tag("examples", examples))
+    out <- c(out, new_tag("examples", examples, ...))
   }
   out
 }

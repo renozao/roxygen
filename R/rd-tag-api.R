@@ -185,7 +185,15 @@ format.section_tag <- function(x, ...) {
 
 #' @S3method format examples_tag
 format.examples_tag <- function(x, ...) {
-  values <- str_c(x$values, collapse = "\n")
+  prefix <- if( length(x$rdID) > 1 ){
+      if( length(x$rdID) != length(x$values) ){
+          warning("rdID and values have different lengths")
+#          str(as.list(x$rdID))
+#          str(as.list(x$values))
+      }
+      sprintf("#----------\n# %s\n#----------\n", x$rdID)
+  }
+  values <- str_c(prefix, x$values, collapse = "\n\n")
   # TODO: auto-wrap with width 100 
   # [see changes in R CMD check: http://developer.r-project.org/blosxom.cgi/R-devel/NEWS/2013/05/09#n2013-05-09]
   #values <- formatR::tidy.source(text=values, width.cutoff = 100L)
