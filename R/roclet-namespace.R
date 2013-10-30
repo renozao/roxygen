@@ -111,7 +111,12 @@ roc_process.namespace <- function(roclet, partita, base_path) {
     )
     ns <- c(ns, ns_one)
   }
-  with_locale("C", sort(unique(ns)))
+  
+  # do not really sort, but only group directives together
+  # , so that the import order can be controlled
+  #with_locale("C", sort(unique(ns)))
+  ns <- unique(ns)
+  ns[order(gsub("^([^(]+).*", "\\1", ns))]
 }
 
 
