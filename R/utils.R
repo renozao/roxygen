@@ -15,9 +15,9 @@ usage <- function(args) {
   arg_to_text <- function(arg) {
     if (is.missing.arg(arg)) return("")
     text <- deparse(arg, backtick = TRUE)
-    text <- str_replace_all(text, fixed("%"), "\\%")
     text <- str_replace_all(text, fixed(" "), "\u{A0}")
 	text <- str_replace_all(text, fixed("\\"), "\\\\")
+    text <- str_replace_all(text, fixed("%"), "\\%")
     Encoding(text) <- "UTF-8"    
     
     str_c("\u{A0}=\u{A0}", paste(text, collapse = "\n"))
