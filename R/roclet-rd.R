@@ -819,7 +819,10 @@ process_description <- function(partitum, base_path) {
   # 2nd paragraph = description (unless has @description)
   if (!is.null(partitum$description)) {
     description <- partitum$description
-  } else if (length(paragraphs) > 0) {
+  } else if (!is.null(partitum$details)) {
+      description <- paragraphs
+      paragraphs <- NULL
+  }else if (length(paragraphs) > 0) {
     description <- paragraphs[1]
     paragraphs <- paragraphs[-1]
   } else {
