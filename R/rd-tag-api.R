@@ -156,9 +156,13 @@ format.arguments_tag <- function(x, ...) {
   names <- names(x$values)
   dups <- duplicated(names)
   
+  # flag comment lines
+  x$values <- gsub("^%([^\n]*)\n", "%\\1@@@@", x$values)
   items <- str_c("\\item{", names, "}{", x$values, "}", collapse = "\n\n")
-  rd_tag("arguments", str_wrap(items, width = 60, exdent = 2, indent = 2),
-    space = TRUE)
+  # fix comment lines
+  ws <- str_wrap(items, width = 60, exdent = 2, indent = 2)
+  ws <- gsub('@@@@', "\n", ws, fixed = TRUE)
+  rd_tag("arguments", ws, space = TRUE)
 }
 
 #' @S3method format slot_tag
