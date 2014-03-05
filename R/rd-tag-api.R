@@ -201,6 +201,9 @@ format.examples_tag <- function(x, ...) {
   # TODO: auto-wrap with width 100 
   # [see changes in R CMD check: http://developer.r-project.org/blosxom.cgi/R-devel/NEWS/2013/05/09#n2013-05-09]
   #values <- formatR::tidy.source(text=values, width.cutoff = 100L)
+  # force using maximum 2 cores
+  values <- str_c("\\dontshow{# roxygen generated flag\noptions(R_CHECK_RUNNING_EXAMPLES_=TRUE)\n}\n\n"
+                  , values)
   rd_tag(x$tag, values, space = TRUE)  
 }
 
