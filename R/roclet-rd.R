@@ -408,10 +408,12 @@ roclet_rd_one <- function(partitum, base_path) {
   partitum <- process_templates(partitum, base_path)
   # check if s4 method or generic
   doProcessS4 <- (partitum$src_s4 %||% FALSE) && (partitum$inline %||% FALSE) 
-  
+  # check if docType package
+  isdocType_package <- identical(partitum$docType, 'package')
+   
   has_rd <- any(names(partitum) %in% c("description", "param", "return",
     "title", "example", "examples", "name", "rdname", "usage",
-    "details", "introduction"))
+    "details", "introduction")) || isdocType_package
   dont_rd <- any(names(partitum) == "noRd")
   if ( (!has_rd && !doProcessS4) || dont_rd) return()
   
@@ -419,7 +421,9 @@ roclet_rd_one <- function(partitum, base_path) {
   rdID <- partitum$src_topic %||% partitum$src_name
   if( is.null(rdID) && identical(partitum$value, 'NULL') ) rdID <- partitum$name 
   # Figure out topic name
-  name <- partitum$name %||% rdID
+  name <- partitum$name %||% 
+          {if( isdocType_package ) paste0(roxygen_pkgname(), "-package")}  %||% 
+          rdID
   if (is.null(name)) roxygen_stop("Missing name", srcref = partitum$srcref)
 
   # Work out file name and initialise Rd object
@@ -435,7 +439,7 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, new_tag("encoding", partitum$encoding))
   add_tag(rd, new_tag("inline", partitum$inline))
   add_tag(rd, new_tag("name", name))
-  add_tag(rd, new_tag("alias", partitum$name %||% partitum$src_alias))
+  add_tag(rd, new_tag("alias", partitum$name %||% partitum$src_alias %||% name))
   add_tag(rd, new_tag("formals", names(partitum$formals), rep(rdID, length(partitum$formals))))
   add_tag(rd, new_tag("srcref", setNames(list(partitum$srcref), rdID)))
 
@@ -447,7 +451,7 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, process.usage(partitum))
   add_tag(rd, process.arguments(partitum))
   add_tag(rd, process.slot(partitum))
-  add_tag(rd, process.docType(partitum))
+  add_tag(rd, process.docType(partitum, name, base_path))
   add_tag(rd, process_had_tag(partitum, 'note'))
   add_tag(rd, process_had_tag(partitum, 'family'))
   add_tag(rd, process_had_tag(partitum, 'inheritParams', function(tag, param){ 
@@ -891,7 +895,7 @@ process.section <- function(key, value) {
   new_tag("section", list(list(name = pieces[1], content = pieces[2])))
 }
 
-process.docType <- function(partitum) {
+process.docType <- function(partitum, name, base_path) {
   doctype <- partitum$docType %||% partitum$src_type
   
   if (is.null(doctype)) return()
@@ -899,11 +903,14 @@ process.docType <- function(partitum) {
   tags <- list()
   
   if (doctype == "package") {
-    name <- partitum$name
     tags <- c(tags, new_tag("docType", "package"))
+    tags <- c(tags, new_tag("keywords", "package"))
     if (!str_detect(name, "-package")) {
       tags <- c(tags, new_tag("alias", str_c(name, "-package")))
     }
+    # use DESCRIPTION to fill in many fields
+    tags <- c(tags, packageTags(base_path))
+    ##
   } else if (doctype == "data") {
     tags <- c(tags, new_tag("docType", "data"))
     if (is.null(partitum$format)) {
@@ -920,6 +927,78 @@ process.docType <- function(partitum) {
   }
   
   tags
+}
+
+# extract tags from DESCRIPTION file
+packageTags <- function(path){
+    
+    # read DESCRIPTION file
+    d <- read.description(file.path(path, 'DESCRIPTION'))
+#    print(d)
+    # initialise tag list
+    tags <- list()
+    
+    #@title
+    tags <- c(tags, new_tag('title', d$Title))
+    #@description
+    tags <- c(tags, new_tag('description', d$Description))
+    #@details
+    dtab <- sprintf("\\tabular{ll}{
+Package: \\tab %s\\cr
+Type: \\tab Package\\cr
+Version: \\tab %s\\cr
+Date: \\tab %s\\cr
+License: \\tab %s\\cr
+LazyLoad: \\tab %s\\cr
+}", d$Package, d$Version, d$Date, d$License, d$LazyLoad %||% "yes")
+
+    tags <- c(tags, new_tag('details', dtab))
+    
+    #@author
+    if( !is.null(d$`Authors@R`) ){
+        contrib <- eval(parse(text = d$`Authors@R`))
+    	contrib_str <- format(contrib)
+        
+        i_contrib <- NULL
+        # extract maintainer from Authors@R 
+        if ( is.null(d$Maintainer) ){
+            m <- grep("\\[[^]]*cre[^]]*\\]", contrib_str)
+            i_contrib <- c(i_contrib, m)
+            d$Maintainer <- str_trim(gsub("\\[[^]]*cre[^]]*\\]", '', contrib_str[m]))
+        }
+        # extract authors from Authors@R 
+        if ( is.null(d[['Author']]) ){
+            m <- grep("\\[[^]]*aut[^]]*\\]", format(contrib))
+            i_contrib <- c(i_contrib, m)
+            d$Author <- str_trim(gsub("\\[[^]]*aut[^]]*\\]", '', contrib_str[m]))
+        }
+        
+        i_contrib <- unique(i_contrib)
+        if( length(i_contrib) != length(contrib_str) ){
+            d$Contrib <- str_trim(gsub("\\[[^]][^]]*\\]", '', contrib_str[-i_contrib]))
+        }
+    }
+    
+    # maintainer
+    if ( !is.null(d$Maintainer) && !d$Maintainer %in% d$Author ){
+        d$Author <- c(d$Author, paste0("Maintainer: " , d$Maintainer))
+    }
+    # contributors
+    if (!is.null(d$Contrib)){
+        d$Author <- c(d$Author, "Contribution: ", d$Contrib)
+    }
+    
+    if (!is.null(d$Author)) {
+        if( length(im <- which(d$Author == d$Maintainer)) ){
+            d$Author[im] <- paste0(d$Author[im], " (Maintainer)")
+        }
+        tags <- c(tags, new_tag('author', d$Author))
+    }
+    ##/author
+    
+    
+    # return tags
+    tags
 }
 
 process_had_tag <- function(partitum, tag, f = new_tag, ...) {
