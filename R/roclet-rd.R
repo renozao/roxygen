@@ -443,6 +443,7 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, new_tag("formals", names(partitum$formals), rep(rdID, length(partitum$formals))))
   add_tag(rd, new_tag("srcref", setNames(list(partitum$srcref), rdID)))
 
+  add_tag(rd, process.docType(partitum, name, base_path))
   add_tag(rd, process_description(partitum, base_path))
 
   add_tag(rd, process_had_tag(partitum, 'aliases', function(tag, param) {
@@ -451,7 +452,6 @@ roclet_rd_one <- function(partitum, base_path) {
   add_tag(rd, process.usage(partitum))
   add_tag(rd, process.arguments(partitum))
   add_tag(rd, process.slot(partitum))
-  add_tag(rd, process.docType(partitum, name, base_path))
   add_tag(rd, process_had_tag(partitum, 'note'))
   add_tag(rd, process_had_tag(partitum, 'family'))
   add_tag(rd, process_had_tag(partitum, 'inheritParams', function(tag, param){ 
@@ -955,27 +955,33 @@ LazyLoad: \\tab %s\\cr
     tags <- c(tags, new_tag('details', dtab))
     
     #@author
+    if( !is.null(d$Author) ) 
+        d$Author <- str_trim(str_split(d$Author, ",")[[1]])
+    
     if( !is.null(d$`Authors@R`) ){
         contrib <- eval(parse(text = d$`Authors@R`))
     	contrib_str <- format(contrib)
         
-        i_contrib <- NULL
+        i_auth <- NULL
         # extract maintainer from Authors@R 
         if ( is.null(d$Maintainer) ){
             m <- grep("\\[[^]]*cre[^]]*\\]", contrib_str)
-            i_contrib <- c(i_contrib, m)
+            i_auth <- c(i_auth, m)
             d$Maintainer <- str_trim(gsub("\\[[^]]*cre[^]]*\\]", '', contrib_str[m]))
         }
         # extract authors from Authors@R 
         if ( is.null(d[['Author']]) ){
             m <- grep("\\[[^]]*aut[^]]*\\]", format(contrib))
-            i_contrib <- c(i_contrib, m)
+            i_auth <- c(i_auth, m)
             d$Author <- str_trim(gsub("\\[[^]]*aut[^]]*\\]", '', contrib_str[m]))
         }
         
-        i_contrib <- unique(i_contrib)
-        if( length(i_contrib) != length(contrib_str) ){
-            d$Contrib <- str_trim(gsub("\\[[^]][^]]*\\]", '', contrib_str[-i_contrib]))
+        if( is.null(i_auth) ){
+            i_auth <- grep("\\[[^]]*((aut)|(cre))[^]]*\\]", format(contrib))
+        }
+        i_auth <- unique(i_auth)
+        if( length(i_auth) != length(contrib_str) ){
+            d$Contrib <- str_trim(gsub("\\[[^]][^]]*\\]", '', contrib_str[-i_auth]))
         }
     }
     
