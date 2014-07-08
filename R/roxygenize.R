@@ -59,7 +59,9 @@ roxygenize <- function(package.dir,
   if (file.exists(DESCRIPTION)) {
     desc <- read.description(DESCRIPTION)
 	# use true package name
-	roxygen_pkgname(desc$Package) 
+	roxygen_pkgname(desc$Package)
+    assign('.ROXYGEN', TRUE, .GlobalEnv)
+    on.exit( rm(.ROXYGEN, envir = .GlobalEnv) )
     raw_collate <- desc$Collate %||% ""
     con <- textConnection(raw_collate)
     on.exit(close(con))
@@ -79,7 +81,7 @@ roxygenize <- function(package.dir,
   }
   
   parsed <- parse.files(r_files)
-
+  
   roclets <- str_c(roclets, "_roclet", sep = "")
   for (roclet in roclets) {
     roc <- match.fun(roclet)()

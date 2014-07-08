@@ -955,16 +955,16 @@ LazyLoad: \\tab %s\\cr
     tags <- c(tags, new_tag('details', dtab))
     
     #@author
-    if( !is.null(d$Author) ) 
-        d$Author <- str_trim(str_split(d$Author, ",")[[1]])
+    if( !is.null(auth <- d[['Author']]) ) 
+        d$Author <- str_trim(str_split(auth, ",")[[1]])
     
-    if( !is.null(d$`Authors@R`) ){
-        contrib <- eval(parse(text = d$`Authors@R`))
+    if( !is.null(auth <- d$`Authors@R`) ){
+        contrib <- eval(parse(text = auth))
     	contrib_str <- format(contrib)
         
         i_auth <- NULL
         # extract maintainer from Authors@R 
-        if ( is.null(d$Maintainer) ){
+        if ( is.null(d[['Maintainer']]) ){
             m <- grep("\\[[^]]*cre[^]]*\\]", contrib_str)
             i_auth <- c(i_auth, m)
             d$Maintainer <- str_trim(gsub("\\[[^]]*cre[^]]*\\]", '', contrib_str[m]))
@@ -986,8 +986,8 @@ LazyLoad: \\tab %s\\cr
     }
     
     # maintainer
-    if ( !is.null(d$Maintainer) && !d$Maintainer %in% d$Author ){
-        d$Author <- c(d$Author, paste0("Maintainer: " , d$Maintainer))
+    if ( !is.null(auth <- d[['Maintainer']]) && !d[['Maintainer']] %in% d[['Author']] ){
+        d$Author <- c(d$Author, paste0("Maintainer: " , auth))
     }
     # contributors
     if (!is.null(d$Contrib)){
