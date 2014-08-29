@@ -80,15 +80,16 @@ format.encoding_tag <- format_first
 
 # Tags collapse their values into a single string ----------------------------
 
-format_collapse <- function(x, ..., indent = 2, exdent = 2, cite = FALSE) {
+format_collapse <- function(x, ..., indent = 2, exdent = 2, cite = FALSE, wrap = !missing(exdent) ) {
   values <- str_c(x$values, collapse = "\n\n")
   # substitute citation keys
   if( cite ) values <- format_cite(values)
-  rd_tag(x$tag, str_wrap(values, width = 60, indent = indent, 
-    exdent = exdent), space = TRUE)
+  if( wrap ) values <- str_wrap(values, width = 60, indent = indent, exdent = exdent)
+  else if( indent > 0 ) values <- paste0(paste0(rep(' ', indent), collapse = ''), values)
+  rd_tag(x$tag, values, space = TRUE)
 } 
 
-format_collapse_cite <- function(...) format_collapse(..., cite = TRUE)
+format_collapse_cite <- function(...) format_collapse(..., wrap = TRUE, cite = TRUE)
 #' @S3method format author_tag
 #' @S3method format concept_tag
 #' @S3method format description_tag
@@ -158,9 +159,10 @@ format.arguments_tag <- function(x, ...) {
   
   # flag comment lines
   x$values <- gsub("^%([^\n]*)\n", "%\\1@@@@", x$values)
-  items <- str_c("\\item{", names, "}{", x$values, "}", collapse = "\n\n")
+  items <- str_c("  \\item{", names, "}{", x$values, "}", collapse = "\n\n")
   # fix comment lines
-  ws <- str_wrap(items, width = 60, exdent = 2, indent = 2)
+  ws <- items
+  #ws <- str_wrap(items, width = 60, exdent = 2, indent = 2)
   ws <- gsub('@@@@', "\n", ws, fixed = TRUE)
   rd_tag("arguments", ws, space = TRUE)
 }
@@ -178,7 +180,7 @@ format.section_tag <- function(x, ...) {
   names <- vapply(x$values, "[[", "name", FUN.VALUE = character(1))
 
   contents <- vapply(x$values, "[[", "content", FUN.VALUE = character(1))
-  contents <- str_wrap(str_trim(contents), width = 60, exdent = 2, indent = 2)
+  #contents <- str_wrap(str_trim(contents), width = 60, exdent = 2, indent = 2)
   
   # substitute citation keys
   contents <- format_cite(contents)
