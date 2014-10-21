@@ -89,7 +89,7 @@ format_collapse <- function(x, ..., indent = 2, exdent = 2, cite = FALSE, wrap =
   rd_tag(x$tag, values, space = TRUE)
 } 
 
-format_collapse_cite <- function(...) format_collapse(..., wrap = TRUE, cite = TRUE)
+format_collapse_cite <- function(...) format_collapse(..., wrap = FALSE, cite = TRUE)
 #' @S3method format author_tag
 #' @S3method format concept_tag
 #' @S3method format description_tag
