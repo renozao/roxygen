@@ -5,7 +5,7 @@ parse.preref <- function(lines) {
     "right")
 
   if (length(trimmed.lines) == 0) return(NULL)
-
+  
   joined.lines <- paste0(trimmed.lines, collapse = '\n')
   ## Thanks to Fegis at #regex on Freenode for the
   ## lookahead/lookbehind hack; as he notes, however, "it's not
@@ -16,16 +16,16 @@ parse.preref <- function(lines) {
   elements <- str_replace_all(elements, fixed("@@"), "@")
 
   parsed <- parse_elements(elements[-1])
-
+  
   if (elements[[1]] != "") {
     check_rd(NULL, elements[[1]])
     parsed$introduction <- str_trim(elements[[1]])
   }
   parsed
-}
+} 
 
 # Sequence that distinguishes roxygen comment from normal comment.
-LINE.DELIMITER <- '\\s*#+\' ?'
+LINE.DELIMITER <- '^\\s*#+\' ?'
 
 parse_elements <- function(elements) {
   pieces <- str_split_fixed(elements, "[[:space:]]+", 2)
@@ -90,7 +90,7 @@ parse.words.line <- function(key, rest) {
   str_split(rest, "\\s+")[[1]]
 }
 
-
+ 
 parse.name.description <- function(key, rest) {
   check_rd(key, rest)
   pieces <- str_split_fixed(rest, "[[:space:]]+", 2)
