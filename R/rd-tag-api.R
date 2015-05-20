@@ -167,6 +167,18 @@ format.section_tag <- function(x, ..., wrap = TRUE) {
 }
 
 #' @export
+format.newcommand_tag <- function(x, ...){
+	cmds <- sapply(x$values, function(cmd){
+		# check for arguments
+		if( grepl("^((\\[[0-9]+\\])|(\\{))", cmd) ) cmd
+		else str_c("{", cmd, "}")
+	})
+	str_c("\\", x$tag, "{\\", str_trim(names(x$values)), "}", cmds, collapse="\n")
+}
+#' @export
+format.renewcommand_tag <- format.newcommand_tag
+
+#' @export
 format.demo_tag <- function(x, ...){
 	
 	if( !length(x$values) ) return()

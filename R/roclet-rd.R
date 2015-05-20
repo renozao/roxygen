@@ -31,6 +31,8 @@ register.preref.parsers(parse.examples,
 
 register.preref.parsers(parse.name.description,
                         'param',
+						'newcommand',
+						'renewcommand',
                         'slot',
                         'field',
                         'method',
@@ -41,7 +43,7 @@ register.preref.parsers(parse.name,
 
 register.preref.parsers(parse.toggle,
                         'noRd')
-
+				
 register.preref.parsers(parse.raw,
 						'demo')
 
@@ -159,6 +161,8 @@ roclet_rd_one <- function(partitum, base_path, env) {
       new_tag("keyword", str_split(str_trim(param), "\\s+")[[1]])
     }))
   add_tag(rd, process_had_tag(partitum, 'section', process.section))
+  add_tag(rd, process.name_description(partitum, 'newcommand'))
+  add_tag(rd, process.name_description(partitum, 'renewcommand'))
   add_tag(rd, process.examples(partitum, base_path))
   add_tag(rd, process_had_tag(partitum, 'demo', process.demo, base_path=base_path, filename=filename))
 
@@ -347,6 +351,17 @@ process_def_tag <- function(block, tag) {
 
   new_tag(tag, desc)
 }
+
+process.name_description <- function(partitum, tag) {
+	tags <- partitum[names(partitum) == tag]
+	if (length(tags) == 0) return()	
+	
+	desc <- str_trim(sapply(tags, "[[", "description"))
+	names(desc) <- sapply(tags, "[[", "name")
+	
+	new_tag(tag, desc)
+}
+
 
 process.demo <- function(tag, param, base_path, filename) {
 	
