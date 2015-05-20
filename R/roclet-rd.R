@@ -4,7 +4,7 @@ NULL
 
 register.preref.parsers(parse.value,
                         'backref',
-                        'name',
+                        'name', 
                         'rdname',
                         'aliases',
                         'title',
@@ -21,7 +21,7 @@ register.preref.parsers(parse.value,
                         'family',
                         'inheritParams',
                         'format',
-                        'source',
+                        'source', 
                         'encoding',
                         'description',
                         'details')
@@ -42,11 +42,13 @@ register.preref.parsers(parse.name,
 register.preref.parsers(parse.toggle,
                         'noRd')
 
+register.preref.parsers(parse.raw,
+						'demo')
 
 #' Roclet: make Rd files.
 #'
 #' This roclet is the workhorse of \pkg{roxygen}, producing the Rd files that
-#' document that functions in your package.
+#' document that functions in your package.  
 #'
 #' @family roclets
 #' @seealso \code{vignette("rd", package = "roxygen2")}
@@ -62,20 +64,20 @@ roc_process.had <- function(roclet, parsed, base_path, options = list()) {
 
   # Remove srcrefs with no attached roxygen comments
   partita <- Filter(function(x) length(x) > 1, partita)
-
+  
 
   topics <- list()
   for (partitum in partita) {
-    errors_with_srcref(partitum$srcref, {
-      new <- roclet_rd_one(partitum, base_path, env)
-    })
-
+        errors_with_srcref(partitum$srcref, {
+              new <- roclet_rd_one(partitum, base_path, env)
+        })
+        
     if (is.null(new)) next
-
-    old <- topics[[new$filename]]
+         
+        old <- topics[[new$filename]]
     topics[[new$filename]] <- if (is.null(old)) new$rd else merge(old, new$rd)
   }
-
+  
   # Second parse through to process @family
   topics <- process_family(topics)
   # Final parse to process @inheritParams
@@ -95,17 +97,17 @@ get_values <- function(topics, tag) {
 }
 
 
-roclet_rd_one <- function(partitum, base_path, env) {
+roclet_rd_one <- function(partitum, base_path, env) {  
   rd <- new_rd_file()
 
   # Add in templates
   partitum <- process_templates(partitum, base_path)
-
+   
   has_rd <- any(names(partitum) %in% c("description", "param", "return",
     "title", "example", "examples", "name", "rdname", "usage",
-    "details", "introduction", "describeIn"))
+    "details", "introduction", "describeIn", "demo"))
   if (!has_rd) return()
-
+  
   if (any(names(partitum) == "noRd")) return()
 
   name <- partitum$name %||% default_topic_name(partitum$object) %||%
@@ -158,15 +160,16 @@ roclet_rd_one <- function(partitum, base_path, env) {
     }))
   add_tag(rd, process_had_tag(partitum, 'section', process.section))
   add_tag(rd, process.examples(partitum, base_path))
+  add_tag(rd, process_had_tag(partitum, 'demo', process.demo, base_path=base_path, filename=filename))
 
   list(rd = rd, filename = filename)
 }
 
 #' @export
 roc_output.had <- function(roclet, results, base_path, options = list(),
-                           check = TRUE) {
+                           check = TRUE) { 
   man <- normalizePath(file.path(base_path, "man"))
-
+  
   contents <- vapply(results, format, wrap = options$wrap,
     FUN.VALUE = character(1))
 
@@ -198,18 +201,18 @@ clean.had <- function(roclet, base_path) {
   unlink(rd[made_by_me])
 }
 
-# Process title, description and details.
+# Process title, description and details. 
 #
 # Split the introductory matter into its description followed
 # by details (separated by a blank line).
 process_description <- function(partitum, base_path) {
   intro <- partitum$introduction
-
+  
   if (!is.null(intro)) {
     paragraphs <- str_trim(str_split(intro, fixed('\n\n'))[[1]])
   } else {
     paragraphs <- NULL
-  }
+  } 
 
   # 1st paragraph = title (unless has @title)
   if (!is.null(partitum$title)) {
@@ -220,12 +223,12 @@ process_description <- function(partitum, base_path) {
   } else {
     title <- NULL
   }
-
-
+  
+  
   # 2nd paragraph = description (unless has @description)
   if (!is.null(partitum$description)) {
     description <- partitum$description
-  } else if (length(paragraphs) > 0) {
+  }else if (length(paragraphs) > 0) {
     description <- paragraphs[1]
     paragraphs <- paragraphs[-1]
   } else {
@@ -242,7 +245,7 @@ process_description <- function(partitum, base_path) {
   }
 
   c(new_tag("title", title),
-    new_tag("description", description),
+    new_tag("description", description), 
     new_tag("details", details))
 }
 
@@ -272,16 +275,16 @@ process_methods <- function(block) {
 # the files pointed to by each \code{@@example}.
 process.examples <- function(partitum, base_path) {
   out <- list()
-  if (!is.null(partitum$examples)) {
+  if (!is.null(partitum$examples)) {      
     out <- c(out, new_tag("examples", partitum$examples))
-  }
-
+  } 
+  
   paths <- unlist(partitum[names(partitum) == "example"])
   if (length(paths) > 0) {
     paths <- file.path(base_path, str_trim(paths))
     examples <- unlist(lapply(paths, readLines))
     examples <- escape_examples(examples)
-
+    
     out <- c(out, new_tag("examples", examples))
   }
   out
@@ -289,7 +292,7 @@ process.examples <- function(partitum, base_path) {
 
 process.section <- function(key, value) {
   pieces <- str_split_fixed(value, ":", n = 2)[1, ]
-
+  
   if (str_detect(pieces[1], "\n")) {
     stop("Section title spans multiple lines: \n",
       "@section ", value, call. = FALSE)
@@ -300,17 +303,17 @@ process.section <- function(key, value) {
 
 process.docType <- function(partitum) {
   doctype <- partitum$docType
-
+  
   if (is.null(doctype)) return()
   tags <- list(new_tag("docType", doctype))
-
+  
   if (doctype == "package") {
     name <- partitum$name
     if (!str_detect(name, "-package")) {
       tags <- c(tags, new_tag("alias", paste0(name, "-package")))
     }
   }
-
+  
   tags
 }
 
@@ -344,3 +347,20 @@ process_def_tag <- function(block, tag) {
 
   new_tag(tag, desc)
 }
+
+process.demo <- function(tag, param, base_path, filename) {
+	
+	res <- as.list(c(filename=file.path(base_path, 'demo', sub("\\.Rd$", "", filename)), desc=NA, code=NA))
+	demo <- str_trim(str_split(param, "\n")[[1]])
+	
+	# store long name
+	if( nchar(demo[1L]) ){
+		res$desc <- demo[1L]
+	}
+	if( length(demo) > 1L ){
+		# store R code
+		res$code <- str_trim(str_c(demo[-1L], collapse="\n"))
+	}
+	new_tag(tag, list(res))
+}
+

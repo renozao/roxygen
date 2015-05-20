@@ -2,14 +2,14 @@
 # multiple expressions take their own braces.
 #
 # Tags have two methods: \code{merge} and \code{format}.  Currently for all
-# tags, merge just combines all values, and format selects from these to
-# display the tags in the appropriate way.
+# tags, merge just combines all values, and format selects from these to 
+# display the tags in the appropriate way. 
 #
 new_tag <- function(tag, values) {
   if (is.null(values)) return()
   # NULL is special sentinel value that suppresses output of that tag
   if (identical(values, "NULL")) return()
-
+  
   subc <- paste0(tag, "_tag")
   list(structure(list(tag = tag, values = values), class = c(subc, "rd_tag")))
 }
@@ -38,7 +38,7 @@ format.rd_tag <- function(x, ...) stop("Unimplemented format")
 
 #' @export
 merge.rd_tag <- function(x, y, ...) {
-  stopifnot(identical(class(x), class(y)))
+  stopifnot(identical(class(x), class(y)))  
   new_tag(x$tag, c(x$values, y$values))
 }
 
@@ -79,7 +79,7 @@ format.alias_tag <- function(x, ...) {
 # Tags that keep the first occurence -----------------------------------------
 format_first <- function(x, ...) {
   rd_tag(x$tag, x$values[1])
-}
+} 
 #' @export
 format.name_tag <- function(x, ...) {
   x$values <- str_replace_all(x$values, fixed("%"), "\\%")
@@ -98,11 +98,11 @@ format.encoding_tag <- format_first
 
 format_collapse <- function(x, ..., indent = 0, exdent = 0, wrap = TRUE) {
   values <- paste0(x$values, collapse = "\n\n")
-  if (wrap) {
+  if( wrap ){
     values <- str_wrap(values, width = 60, indent = indent, exdent = exdent)
   }
   rd_tag(x$tag, values, space = TRUE)
-}
+} 
 #' @export
 format.author_tag <- format_collapse
 #' @export
@@ -144,8 +144,8 @@ format.usage_tag <- function(x, ...) {
 format.param_tag <- function(x, ..., wrap = TRUE) {
   names <- names(x$values)
   dups <- duplicated(names)
-
-  items <- paste0("\\item{", names, "}{", x$values, "}", collapse = "\n\n")
+  
+  items <- paste0("  \\item{", names, "}{", x$values, "}", collapse = "\n\n")
   if (wrap) {
     items <- str_wrap(items, width = 60, exdent = 2, indent = 2)
   }
@@ -162,8 +162,58 @@ format.section_tag <- function(x, ..., wrap = TRUE) {
     contents <- str_wrap(str_trim(contents), width = 60, exdent = 2, indent = 2)
   }
 
-  setions <- paste0("\\section{", names, "}{\n", contents, "\n}\n",
+  setions <- paste0("\\section{", names, "}{\n", contents, "\n}\n", 
     collapse = "\n")
+}
+
+#' @export
+format.demo_tag <- function(x, ...){
+	
+	if( !length(x$values) ) return()
+	
+	filename <- x$values[[1]]$filename
+	demoname <- basename(filename)
+	
+	# determine title
+	desc <- vapply(x$values, "[[", "desc", FUN.VALUE = character(1))
+	desc <- desc[!is.na(desc)]
+	title <- if( length(desc) ) desc[1L] else demoname  
+	
+	# stick code together
+	code <- vapply(x$values, "[[", "code", FUN.VALUE = character(1))
+	code <- code[!is.na(code)]
+	code <- paste(code, collapse = "\n\n")
+	if( !nchar(code) ){
+		roxygen_warning("Demo '", demoname,":", title, "' is empty.")
+		return()
+	}
+	
+	# create demo directory if nor present
+	demodir <- normalizePath(dirname(filename), mustWork=FALSE)
+	if( !file.exists(demodir) ){
+		dir.create(demodir)
+	}
+	# (re)-write demo file
+	filename <- str_c(filename, ".R")
+	message("Writing demo file '", filename, "' ... ", appendLF=FALSE)
+	write(code, file=filename)
+	# load demo index file
+	dIndex <- file.path(demodir, '00Index')
+	idx <- matrix(character(), 0L, 2L)
+	if( file.exists(dIndex) ){
+		idx <- readLines(dIndex)
+		idx <- str_split_fixed(idx, "\t", 2)
+	}
+	demoline <- c(demoname, title)
+	ifile <- which(idx[,1] == demoname)
+	if( !length(ifile) ) idx <- rbind(idx, demoline) 
+	else idx[ifile, ] <- demoline
+	dimnames(idx) <- NULL
+	# write demo index
+	write.table(idx, file=dIndex, sep="\t", row.names=FALSE, col.names=FALSE, quote=FALSE)
+	message('OK [', nrow(idx), ' demo(s)]')
+	# return nothing
+	return()
 }
 
 #' @export

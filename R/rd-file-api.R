@@ -27,10 +27,10 @@ format.rd_file <- function(x, ...) {
     "format", "source", "usage", "param", "value", "description",
     "details", "minidesc", "field", "slot", "rcmethods", "note",
     "section", "examples", "author", "references", "seealso",
-    "concept", "keyword")
-
+    "concept", "keyword", "demo")
+    
   tags <- tags[intersect(order, names(tags))]
-
+  
   formatted <- lapply(tags, "format", ...)
 
   paste0(made_by("%"), paste0(unlist(formatted), collapse = ""))
@@ -56,15 +56,15 @@ get_tag <- function(file, tagname) {
 add_tag <- function(file, tag, overwrite = FALSE) {
   if (is.null(tag)) return()
   stopifnot(is.rd_file(file))
-
+  
   if (!is.rd_tag(tag) && is.list(tag)) {
     return(lapply(tag, add_tag, file = file, overwrite = overwrite))
   }
   stopifnot(is.rd_tag(tag))
-
+  
   existing <- file[[1]][[tag$tag]]
   if (is.null(existing) || overwrite) {
-    file[[1]][[tag$tag]] <- tag
+    file[[1]][[tag$tag]] <- tag 
   } else {
     file[[1]][[tag$tag]] <- merge(existing, tag)[[1]]
   }
